@@ -42,7 +42,7 @@ jobs:
         run: dotnet test -c Release /p:BuildProjectReferences=false
 
       - name: Zip
-        run: cd publish; tar -zcvf ../assets.tar.gz *; cd -
+        run: cd publish; tar -zcvf ../artifacts/assets.tar.gz *; cd -
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
