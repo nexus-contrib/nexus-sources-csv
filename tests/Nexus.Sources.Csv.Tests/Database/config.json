@@ -1,10 +1,3 @@
-# Nexus.Sources.Csv
-
-This data source extension makes it possible to read data files in the Csv format into Nexus.
-
-To use it, put a `config.json` with the following sample content into the database root folder:
-
-```json
 {
   "/A/B/C": {
     "FileSources": {
@@ -40,6 +33,3 @@ To use it, put a `config.json` with the following sample content into the databa
     }
   }
 }
-```
-
-Please see the [tests](tests/Nexus.Sources.Csv.Tests) folder for a complete sample.
