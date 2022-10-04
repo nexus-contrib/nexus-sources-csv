@@ -123,14 +123,15 @@ namespace Nexus.Sources
                 {
                     using var reader = new StreamReader(File.OpenRead(filePath), encoding);
 
-                    var resourceProperties = GetResourceProperties(reader, additionalProperties);
+                    var headerLine = ReadHeaderLine(reader, additionalProperties);
+                    var resourceProperties = GetResourceProperties(headerLine, additionalProperties);
 
                     foreach (var resourceProperty in resourceProperties)
                     {
-                        if (resourceProperty.Equals(default((string, string?, string?))))
+                        if (resourceProperty.Equals(default((string, string, string?, string?))))
                             continue;
 
-                        var (resourceId, unit, group) = resourceProperty;
+                        var (originalName, resourceId, unit, group) = resourceProperty;
 
                         if (group is null)
                             group = additionalProperties.DefaultGroup;
@@ -142,7 +143,8 @@ namespace Nexus.Sources
 
                         // build resource
                         var resourceBuilder = new ResourceBuilder(id: resourceId)
-                            .WithProperty(FileSourceKey, fileSourceId)
+                            .WithFileSourceId(fileSourceId)
+                            .WithOriginalName(originalName)
                             .AddRepresentation(representation);
 
                         if (unit is not null)
@@ -182,12 +184,13 @@ namespace Nexus.Sources
                 var encoding = Encoding.GetEncoding(additionalProperties.CodePage);
                 using var reader = new StreamReader(File.OpenRead(info.FilePath), encoding);
 
-                // resource properties
-                var resourceProperties = GetResourceProperties(reader, additionalProperties);
-
                 // find index
-                var index = resourceProperties
-                    .FindIndex((resourceProperty => resourceProperty.Item1 == info.CatalogItem.Resource.Id));
+                var headerLine = ReadHeaderLine(reader, additionalProperties);
+
+                var index = headerLine
+                    .Split(additionalProperties.Separator)
+                    .ToList()
+                    .FindIndex(current => current == info.OriginalName);
 
                 if (index > -1)
                 {
@@ -249,7 +252,7 @@ namespace Nexus.Sources
             });
         }
 
-        private List<(string, string?, string?)> GetResourceProperties(
+        private string ReadHeaderLine(
             StreamReader reader,
             AdditionalProperties additionalProperties)
         {
@@ -267,18 +270,25 @@ namespace Nexus.Sources
             if (headerLine is null)
                 throw new Exception("The file is incomplete.");
 
+            return headerLine;
+        }
+
+        private List<(string, string, string?, string?)> GetResourceProperties(
+            string headerLine,
+            AdditionalProperties additionalProperties)
+        {
             // analyse header line
-            var resourceProperties = new List<(string, string?, string?)>();
+            var resourceProperties = new List<(string, string, string?, string?)>();
             var columns = headerLine.Split(additionalProperties.Separator);
 
             for (int i = 0; i < columns.Length; i++)
             {
                 // skip columns
-                var column = columns[i];
+                var originalName = columns[i];
 
                 if (additionalProperties.SkipColumnPattern is not null)
                 {
-                    if (Regex.IsMatch(column, additionalProperties.SkipColumnPattern))
+                    if (Regex.IsMatch(originalName, additionalProperties.SkipColumnPattern))
                     {
                         resourceProperties.Add(default);
                         continue;
@@ -290,7 +300,7 @@ namespace Nexus.Sources
 
                 if (additionalProperties.UnitPattern is not null)
                 {
-                    var match = Regex.Match(column, additionalProperties.UnitPattern);
+                    var match = Regex.Match(originalName, additionalProperties.UnitPattern);
 
                     if (match.Success)
                         unit = match.Groups[1].Value;
@@ -301,14 +311,14 @@ namespace Nexus.Sources
 
                 if (additionalProperties.GroupPattern is not null)
                 {
-                    var match = Regex.Match(column, additionalProperties.GroupPattern);
+                    var match = Regex.Match(originalName, additionalProperties.GroupPattern);
 
                     if (match.Success)
                         group = match.Groups[1].Value;
                 }
 
                 // try get resource id
-                var resourceId = FormatResourceId(column, additionalProperties.ReplaceNameRules);
+                var resourceId = FormatResourceId(originalName, additionalProperties.ReplaceNameRules);
 
                 if (!TryEnforceNamingConvention(resourceId, out resourceId))
                 {
@@ -317,7 +327,7 @@ namespace Nexus.Sources
                 }
 
                 // 
-                resourceProperties.Add((resourceId, unit, group));
+                resourceProperties.Add((originalName, resourceId, unit, group));
             }
 
             return resourceProperties;

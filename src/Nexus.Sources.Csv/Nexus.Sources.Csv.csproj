@@ -9,7 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Nexus.Extensibility" Version="1.0.0-beta.11.205">
+    <PackageReference Include="Nexus.Sources.StructuredFile" Version="1.0.0-beta.4.5" />
+    <PackageReference Include="Nexus.Extensibility" Version="1.0.0-beta.11.216">
       <ExcludeAssets>runtime;native</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="System.Text.Encoding.CodePages" Version="6.0.0" />
