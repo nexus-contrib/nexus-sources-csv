@@ -15,9 +15,11 @@
           "DecimalSeparator": ".",
           "InvalidValue": "999",
           "CodePage": 0,
-          "HeaderRow": 1,
-          "SkipColumns": [ 0, 1, 3 ],
+          "HeaderRow": 2,
+          "SkipColumnPattern": "Date|Time|IgnoreMe",
           "UnitPattern": "in (.*)",
+          "DefaultGroup": "raw",
+          "GroupPattern": null,
           "ReplaceNameRules": [
             {
               "Pattern": "Foo",

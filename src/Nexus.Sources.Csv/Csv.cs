@@ -30,9 +30,12 @@ namespace Nexus.Sources
             string InvalidValue,
             int CodePage,
             int HeaderRow,
-            List<int>? SkipColumns,
+            string? SkipColumnPattern,
             string? UnitPattern,
-            List<ReplaceNameRule>? ReplaceNameRules,
+            string? DefaultGroup,
+            string? GroupPattern,
+            string[]? CatalogSourceFiles,
+            ReplaceNameRule[]? ReplaceNameRules,
             char Separator = ',',
             char DecimalSeparator = '.');
 
@@ -97,39 +100,63 @@ namespace Nexus.Sources
                 var additionalProperties = JsonSerializer
                     .Deserialize<AdditionalProperties>(fileSource.AdditionalProperties.Value)!;
 
-                if (!TryGetFirstFile(fileSource, out var filePath))
-                    continue;
+                var filePaths = default(string[]);
 
-                var encoding = Encoding.GetEncoding(additionalProperties.CodePage);
-                using var reader = new StreamReader(File.OpenRead(filePath), encoding);
-
-                var resourceProperties = GetResourceProperties(reader, additionalProperties);
-
-                foreach (var resourceProperty in resourceProperties)
+                if (additionalProperties.CatalogSourceFiles is not null)
                 {
-                    if (resourceProperty.Equals(default((string, string?))))
+                    filePaths = additionalProperties.CatalogSourceFiles
+                        .Where(filePath => filePath is not null)
+                        .Select(filePath => Path.Combine(Root, filePath!))
+                        .ToArray();
+                }
+                else
+                {
+                    if (!TryGetFirstFile(fileSource, out var filePath))
                         continue;
 
-                    var (resourceId, unit) = resourceProperty;
-
-                    // build representation
-                    var representation = new Representation(
-                        dataType: NexusDataType.FLOAT64,
-                        samplePeriod: additionalProperties.SamplePeriod);
-
-                    // build resource
-                    var resourceBuilder = new ResourceBuilder(id: resourceId)
-                        .WithGroups(fileSourceId)
-                        .WithProperty(FileSourceKey, fileSourceId)
-                        .AddRepresentation(representation);
-
-                    if (unit is not null)
-                        resourceBuilder.WithUnit(unit);
-
-                    newCatalogBuilder.AddResource(resourceBuilder.Build());
+                    filePaths = new[] { filePath };
                 }
 
-                catalog = catalog.Merge(newCatalogBuilder.Build());
+                var encoding = Encoding.GetEncoding(additionalProperties.CodePage);
+
+                foreach (var filePath in filePaths)
+                {
+                    using var reader = new StreamReader(File.OpenRead(filePath), encoding);
+
+                    var resourceProperties = GetResourceProperties(reader, additionalProperties);
+
+                    foreach (var resourceProperty in resourceProperties)
+                    {
+                        if (resourceProperty.Equals(default((string, string?, string?))))
+                            continue;
+
+                        var (resourceId, unit, group) = resourceProperty;
+
+                        if (group is null)
+                            group = additionalProperties.DefaultGroup;
+
+                        // build representation
+                        var representation = new Representation(
+                            dataType: NexusDataType.FLOAT64,
+                            samplePeriod: additionalProperties.SamplePeriod);
+
+                        // build resource
+                        var resourceBuilder = new ResourceBuilder(id: resourceId)
+                            .WithProperty(FileSourceKey, fileSourceId)
+                            .AddRepresentation(representation);
+
+                        if (unit is not null)
+                            resourceBuilder.WithUnit(unit);
+
+                        if (group is not null)
+                            resourceBuilder.WithGroups(group);
+
+                        newCatalogBuilder.AddResource(resourceBuilder.Build());
+                    }
+
+                    catalog = catalog.Merge(newCatalogBuilder.Build());
+
+                }
             }
 
             return Task.FromResult(catalog);
@@ -222,12 +249,12 @@ namespace Nexus.Sources
             });
         }
 
-        private List<(string, string?)> GetResourceProperties(
+        private List<(string, string?, string?)> GetResourceProperties(
             StreamReader reader,
             AdditionalProperties additionalProperties)
         {
             // read header line
-            for (int i = 0; i < additionalProperties.HeaderRow; i++)
+            for (int i = 1; i < additionalProperties.HeaderRow; i++)
             {
                 var skippedLine = reader.ReadLine();
 
@@ -241,7 +268,7 @@ namespace Nexus.Sources
                 throw new Exception("The file is incomplete.");
 
             // analyse header line
-            var resourceProperties = new List<(string, string?)>();
+            var resourceProperties = new List<(string, string?, string?)>();
             var columns = headerLine.Split(additionalProperties.Separator);
 
             for (int i = 0; i < columns.Length; i++)
@@ -249,11 +276,13 @@ namespace Nexus.Sources
                 // skip columns
                 var column = columns[i];
 
-                if (additionalProperties.SkipColumns is not null &&
-                    additionalProperties.SkipColumns.Contains(i))
+                if (additionalProperties.SkipColumnPattern is not null)
                 {
-                    resourceProperties.Add(default);
-                    continue;
+                    if (Regex.IsMatch(column, additionalProperties.SkipColumnPattern))
+                    {
+                        resourceProperties.Add(default);
+                        continue;
+                    }
                 }
 
                 // try get unit
@@ -265,7 +294,18 @@ namespace Nexus.Sources
 
                     if (match.Success)
                         unit = match.Groups[1].Value;
-                }   
+                }
+
+                // try get group
+                var group = default(string?);
+
+                if (additionalProperties.GroupPattern is not null)
+                {
+                    var match = Regex.Match(column, additionalProperties.GroupPattern);
+
+                    if (match.Success)
+                        group = match.Groups[1].Value;
+                }
 
                 // try get resource id
                 var resourceId = FormatResourceId(column, additionalProperties.ReplaceNameRules);
@@ -277,7 +317,7 @@ namespace Nexus.Sources
                 }
 
                 // 
-                resourceProperties.Add((resourceId, unit));
+                resourceProperties.Add((resourceId, unit, group));
             }
 
             return resourceProperties;
@@ -292,7 +332,7 @@ namespace Nexus.Sources
             return Resource.ValidIdExpression.IsMatch(newResourceId);
         }
 
-        private string FormatResourceId(string id, List<ReplaceNameRule>? replaceNameRules)
+        private string FormatResourceId(string id, ReplaceNameRule[]? replaceNameRules)
         {
             if (replaceNameRules is not null)
             {
