@@ -25,8 +25,8 @@ namespace Nexus.Sources.Tests
             // act
             var actual = await dataSource.GetCatalogAsync("/A/B/C", CancellationToken.None);
             var actualIds = actual.Resources!.Select(resource => resource.Id).ToList();
-            var actualUnits = actual.Resources!.Select(resource => resource.Properties.GetStringValue("unit")).ToList();
-            var actualGroups = actual.Resources!.SelectMany(resource => resource.Properties.GetStringArray("groups")!).ToList();
+            var actualUnits = actual.Resources!.Select(resource => resource.Properties?.GetStringValue("unit")).ToList();
+            var actualGroups = actual.Resources!.SelectMany(resource => resource.Properties?.GetStringArray("groups")!).ToList();
             var actualTimeRange = await dataSource.GetTimeRangeAsync("/A/B/C", CancellationToken.None);
 
             // assert
@@ -64,8 +64,8 @@ namespace Nexus.Sources.Tests
             var representation1 = resource1!.Representations!.First();
             var representation2 = resource2!.Representations!.First();
 
-            var catalogItem1 = new CatalogItem(catalog, resource1, representation1);
-            var catalogItem2 = new CatalogItem(catalog, resource2, representation2);
+            var catalogItem1 = new CatalogItem(catalog, resource1, representation1, default);
+            var catalogItem2 = new CatalogItem(catalog, resource2, representation2, default);
 
             var begin = new DateTime(2020, 01, 01, 0, 0, 1, DateTimeKind.Utc);
             var end = new DateTime(2020, 01, 01, 0, 0, 11, DateTimeKind.Utc);
