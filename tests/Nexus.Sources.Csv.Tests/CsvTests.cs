@@ -27,7 +27,7 @@ namespace Nexus.Sources.Tests
             var actualIds = actual.Resources!.Select(resource => resource.Id).ToList();
             var actualUnits = actual.Resources!.Select(resource => resource.Properties?.GetStringValue("unit")).ToList();
             var actualGroups = actual.Resources!.SelectMany(resource => resource.Properties?.GetStringArray("groups")!).ToList();
-            var actualTimeRange = await dataSource.GetTimeRangeAsync("/A/B/C", CancellationToken.None);
+            var (begin, end) = await dataSource.GetTimeRangeAsync("/A/B/C", CancellationToken.None);
 
             // assert
             var expectedIds = new List<string>() { "ThisIsTheBarVariable", "Anything" };
@@ -39,8 +39,8 @@ namespace Nexus.Sources.Tests
             Assert.True(expectedIds.SequenceEqual(actualIds));
             Assert.True(expectedUnits.SequenceEqual(actualUnits));
             Assert.True(expectedGroups.SequenceEqual(actualGroups));
-            Assert.Equal(expectedStartDate, actualTimeRange.Begin);
-            Assert.Equal(expectedEndDate, actualTimeRange.End);
+            Assert.Equal(expectedStartDate, begin);
+            Assert.Equal(expectedEndDate, end);
         }
 
         [Fact]
@@ -59,10 +59,10 @@ namespace Nexus.Sources.Tests
 
             // act
             var catalog = await dataSource.GetCatalogAsync("/A/B/C", CancellationToken.None);
-            var resource1 = catalog.Resources!.First();
+            var resource1 = catalog.Resources![0];
             var resource2 = catalog.Resources!.Last();
-            var representation1 = resource1!.Representations!.First();
-            var representation2 = resource2!.Representations!.First();
+            var representation1 = resource1!.Representations![0];
+            var representation2 = resource2!.Representations![0];
 
             var catalogItem1 = new CatalogItem(catalog, resource1, representation1, default);
             var catalogItem2 = new CatalogItem(catalog, resource2, representation2, default);
@@ -115,6 +115,22 @@ namespace Nexus.Sources.Tests
             }
 
             DoAssert();
+        }
+
+        [Theory]
+        [InlineData("1.2,3.4,4.5", 2, "4.5")]
+        [InlineData("\".,.\",1,abc", 2, "abc")]
+        [InlineData("1,\".,.\",abc", 2, "abc")]
+        [InlineData("1,abc,\".,.\"", 1, "abc")]
+        [InlineData("\"ab,\"\"cd,e\"\"f\",1.20", 1, "1.20")]
+        public void CanGetCell(string line, int index, string expected)
+        {
+            // Act
+            var success = Csv.TryGetCell(line, index, ',', out var actual);
+
+            // Assert
+            Assert.True(success);
+            Assert.Equal(expected, actual.ToString());
         }
     }
 }

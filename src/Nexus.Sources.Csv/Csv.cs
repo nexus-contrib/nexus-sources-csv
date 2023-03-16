@@ -1,12 +1,13 @@
-﻿using Microsoft.Extensions.Logging;
-using Nexus.DataModel;
-using Nexus.Extensibility;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
+using Nexus.DataModel;
+using Nexus.Extensibility;
 
 namespace Nexus.Sources
 {
@@ -27,7 +28,7 @@ namespace Nexus.Sources
 
         record AdditionalProperties(
             TimeSpan SamplePeriod,
-            string InvalidValue,
+            string? InvalidValue,
             int CodePage,
             int HeaderRow,
             string? SkipColumnPattern,
@@ -80,7 +81,7 @@ namespace Nexus.Sources
                 return Task.FromResult(_config.Select(entry => new CatalogRegistration(entry.Key, entry.Value.Title)).ToArray());
 
             else
-                return Task.FromResult(new CatalogRegistration[0]);
+                return Task.FromResult(Array.Empty<CatalogRegistration>());
         }
 
         protected override Task<ResourceCatalog> GetCatalogAsync(string catalogId, CancellationToken cancellationToken)
@@ -214,15 +215,11 @@ namespace Nexus.Sources
                             return;
                         }
 
-                        var parts = line.Split(additionalProperties.Separator, index + 2);
-
-                        if (parts.Length < (index + 1))
+                        if (!TryGetCell(line, index, additionalProperties.Separator, out var cell))
                         {
                             Logger.LogDebug("The actual buffer size does not match the expected size, which indicates an incomplete file");
                             return;
                         }
-
-                        var cell = parts[index];
 
                         if (cell == additionalProperties.InvalidValue)
                         {
@@ -273,7 +270,7 @@ namespace Nexus.Sources
             return headerLine;
         }
 
-        private List<(string, string, string?, string?)> GetResourceProperties(
+        private static List<(string, string, string?, string?)> GetResourceProperties(
             string headerLine,
             AdditionalProperties additionalProperties)
         {
@@ -333,7 +330,7 @@ namespace Nexus.Sources
             return resourceProperties;
         }
 
-        private bool TryEnforceNamingConvention(string resourceId, [NotNullWhen(returnValue: true)] out string newResourceId)
+        private static bool TryEnforceNamingConvention(string resourceId, [NotNullWhen(returnValue: true)] out string newResourceId)
         {
             newResourceId = resourceId;
             newResourceId = Resource.InvalidIdCharsExpression.Replace(newResourceId, "");
@@ -342,7 +339,7 @@ namespace Nexus.Sources
             return Resource.ValidIdExpression.IsMatch(newResourceId);
         }
 
-        private string FormatResourceId(string id, ReplaceNameRule[]? replaceNameRules)
+        private static string FormatResourceId(string id, ReplaceNameRule[]? replaceNameRules)
         {
             if (replaceNameRules is not null)
             {
@@ -353,6 +350,93 @@ namespace Nexus.Sources
             }
 
             return id;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool TryGetCell(ReadOnlySpan<char> line, int index, char separator, out ReadOnlySpan<char> cell)
+        {
+            cell = default;
+            var slicedLine = line;
+
+            for (int j = 0; j < index; j++)
+            {
+                if (slicedLine.Length > 0 && slicedLine[0] == '"')
+                {
+                    if (TrySkipCellWithQuotes(slicedLine[1..], separator, out slicedLine))
+                        continue;
+
+                    else
+                        return false;
+                }
+
+                var separatorIndex = slicedLine.IndexOf(separator);
+
+                if (separatorIndex == -1)
+                    return false;
+
+                slicedLine = slicedLine[(separatorIndex + 1)..];
+            }
+
+            var nextSeparatorIndex = slicedLine.IndexOf(separator);
+
+            if (nextSeparatorIndex == -1)
+                cell = slicedLine;
+
+            else
+                cell = slicedLine[..nextSeparatorIndex];
+            
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool TrySkipCellWithQuotes(ReadOnlySpan<char> line, char separator, out ReadOnlySpan<char> slicedLine)
+        {
+            slicedLine = line;
+            var needPartnerQuote = true;
+
+            while (true)
+            {
+                if (slicedLine.Length == 0)
+                    return false; /* return false is correct because the calling method expects more cells after this one */
+
+                if (needPartnerQuote)
+                {
+                    var quoteIndex = slicedLine.IndexOf('"');
+
+                    if (quoteIndex == -1)
+                        return false;
+
+                    slicedLine = slicedLine[(quoteIndex + 1)..];
+                    needPartnerQuote = false;
+                }
+
+                else
+                {
+                    var nextCharIsSeparator = slicedLine[0] == separator;
+
+                    if (nextCharIsSeparator)
+                    {
+                        slicedLine = slicedLine[1..];
+                        return true;
+                    }
+
+                    else 
+                    {
+                        var nextCharIsQuote = slicedLine[0] == '"';
+
+                        if (nextCharIsQuote)
+                        {
+                            slicedLine = slicedLine[1..];
+                            needPartnerQuote = true;
+                        }
+
+                        else
+                        {
+                            return false; /* syntax error in CSV file */
+                        }
+                    }
+                }
+            }
         }
 
         #endregion
