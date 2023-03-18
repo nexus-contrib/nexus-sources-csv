@@ -1,3 +1,7 @@
+## v1.0.2 - 2023-03-18
+
+Fix target framework version.
+
 ## v1.0.1 - 2023-03-18
 
 Fix handling of quoted cell content.
