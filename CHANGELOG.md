@@ -1,3 +1,7 @@
+## v1.0.1 - 2023-03-18
+
+Fix handling of quoted cell content.
+
 ## v1.0.0 - 2022-10-39
 
 This is the first release.

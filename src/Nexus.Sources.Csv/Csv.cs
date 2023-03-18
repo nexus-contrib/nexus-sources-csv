@@ -221,7 +221,7 @@ namespace Nexus.Sources
                             return;
                         }
 
-                        if (cell == additionalProperties.InvalidValue)
+                        if (MemoryExtensions.Equals(cell, additionalProperties.InvalidValue, StringComparison.Ordinal))
                         {
                             buffer[i] = double.NaN;
                         }
