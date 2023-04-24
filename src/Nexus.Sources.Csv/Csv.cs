@@ -19,7 +19,7 @@ namespace Nexus.Sources
     {
         record CatalogDescription(
             string Title,
-            Dictionary<string, FileSource> FileSources, 
+            Dictionary<string, IReadOnlyList<FileSource>> FileSourceGroups, 
             JsonElement? AdditionalProperties);
 
         record ReplaceNameRule(
@@ -68,11 +68,11 @@ namespace Nexus.Sources
             _config = JsonSerializer.Deserialize<Dictionary<string, CatalogDescription>>(jsonString) ?? throw new Exception("config is null");
         }
 
-        protected override Task<Func<string, Dictionary<string, FileSource>>> GetFileSourceProviderAsync(
+        protected override Task<Func<string, Dictionary<string, IReadOnlyList<FileSource>>>> GetFileSourceProviderAsync(
             CancellationToken cancellationToken)
         {
-            return Task.FromResult<Func<string, Dictionary<string, FileSource>>>(
-                catalogId => _config[catalogId].FileSources);
+            return Task.FromResult<Func<string, Dictionary<string, IReadOnlyList<FileSource>>>>(
+                catalogId => _config[catalogId].FileSourceGroups);
         }
 
         protected override Task<CatalogRegistration[]> GetCatalogRegistrationsAsync(string path, CancellationToken cancellationToken)
@@ -89,76 +89,78 @@ namespace Nexus.Sources
             var catalogDescription = _config[catalogId];
             var catalog = new ResourceCatalog(id: catalogId);
 
-            foreach (var (fileSourceId, fileSource) in catalogDescription.FileSources)
+            foreach (var (fileSourceId, fileSourceGroup) in catalogDescription.FileSourceGroups)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var newCatalogBuilder = new ResourceCatalogBuilder(id: catalogId);
-
-                if (fileSource.AdditionalProperties is null)
-                    continue;
-
-                var additionalProperties = JsonSerializer
-                    .Deserialize<AdditionalProperties>(fileSource.AdditionalProperties.Value)!;
-
-                var filePaths = default(string[]);
-
-                if (additionalProperties.CatalogSourceFiles is not null)
+                foreach (var fileSource in fileSourceGroup)
                 {
-                    filePaths = additionalProperties.CatalogSourceFiles
-                        .Where(filePath => filePath is not null)
-                        .Select(filePath => Path.Combine(Root, filePath!))
-                        .ToArray();
-                }
-                else
-                {
-                    if (!TryGetFirstFile(fileSource, out var filePath))
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var newCatalogBuilder = new ResourceCatalogBuilder(id: catalogId);
+
+                    if (fileSource.AdditionalProperties is null)
                         continue;
 
-                    filePaths = new[] { filePath };
-                }
+                    var additionalProperties = JsonSerializer
+                        .Deserialize<AdditionalProperties>(fileSource.AdditionalProperties.Value)!;
 
-                var encoding = Encoding.GetEncoding(additionalProperties.CodePage);
+                    var filePaths = default(string[]);
 
-                foreach (var filePath in filePaths)
-                {
-                    using var reader = new StreamReader(File.OpenRead(filePath), encoding);
-
-                    var headerLine = ReadHeaderLine(reader, additionalProperties);
-                    var resourceProperties = GetResourceProperties(headerLine, additionalProperties);
-
-                    foreach (var resourceProperty in resourceProperties)
+                    if (additionalProperties.CatalogSourceFiles is not null)
                     {
-                        if (resourceProperty.Equals(default((string, string, string?, string?))))
+                        filePaths = additionalProperties.CatalogSourceFiles
+                            .Where(filePath => filePath is not null)
+                            .Select(filePath => Path.Combine(Root, filePath!))
+                            .ToArray();
+                    }
+                    else
+                    {
+                        if (!TryGetFirstFile(fileSource, out var filePath))
                             continue;
 
-                        var (originalName, resourceId, unit, group) = resourceProperty;
-
-                        if (group is null)
-                            group = additionalProperties.DefaultGroup;
-
-                        // build representation
-                        var representation = new Representation(
-                            dataType: NexusDataType.FLOAT64,
-                            samplePeriod: additionalProperties.SamplePeriod);
-
-                        // build resource
-                        var resourceBuilder = new ResourceBuilder(id: resourceId)
-                            .WithFileSourceId(fileSourceId)
-                            .WithOriginalName(originalName)
-                            .AddRepresentation(representation);
-
-                        if (unit is not null)
-                            resourceBuilder.WithUnit(unit);
-
-                        if (group is not null)
-                            resourceBuilder.WithGroups(group);
-
-                        newCatalogBuilder.AddResource(resourceBuilder.Build());
+                        filePaths = new[] { filePath };
                     }
 
-                    catalog = catalog.Merge(newCatalogBuilder.Build());
+                    var encoding = Encoding.GetEncoding(additionalProperties.CodePage);
 
+                    foreach (var filePath in filePaths)
+                    {
+                        using var reader = new StreamReader(File.OpenRead(filePath), encoding);
+
+                        var headerLine = ReadHeaderLine(reader, additionalProperties);
+                        var resourceProperties = GetResourceProperties(headerLine, additionalProperties);
+
+                        foreach (var resourceProperty in resourceProperties)
+                        {
+                            if (resourceProperty.Equals(default))
+                                continue;
+
+                            var (originalName, resourceId, unit, group) = resourceProperty;
+
+                            group ??= additionalProperties.DefaultGroup;
+
+                            // build representation
+                            var representation = new Representation(
+                                dataType: NexusDataType.FLOAT64,
+                                samplePeriod: additionalProperties.SamplePeriod);
+
+                            // build resource
+                            var resourceBuilder = new ResourceBuilder(id: resourceId)
+                                .WithFileSourceId(fileSourceId)
+                                .WithOriginalName(originalName)
+                                .AddRepresentation(representation);
+
+                            if (unit is not null)
+                                resourceBuilder.WithUnit(unit);
+
+                            if (group is not null)
+                                resourceBuilder.WithGroups(group);
+
+                            newCatalogBuilder.AddResource(resourceBuilder.Build());
+                        }
+
+                        catalog = catalog.Merge(newCatalogBuilder.Build());
+
+                    }
                 }
             }
 
@@ -221,7 +223,7 @@ namespace Nexus.Sources
                             return;
                         }
 
-                        if (cell == additionalProperties.InvalidValue)
+                        if (MemoryExtensions.Equals(cell, additionalProperties.InvalidValue, StringComparison.Ordinal))
                         {
                             buffer[i] = double.NaN;
                         }
@@ -246,10 +248,10 @@ namespace Nexus.Sources
                         .Span
                         .Fill(1);
                 }
-            });
+            }, cancellationToken);
         }
 
-        private string ReadHeaderLine(
+        private static string ReadHeaderLine(
             StreamReader reader,
             AdditionalProperties additionalProperties)
         {

@@ -7,8 +7,8 @@ To use it, put a `config.json` with the following sample content into the databa
 ```json
 {
   "/A/B/C": {
-    "FileSources": {
-      "raw": {
+    "FileSourceGroups": {
+      "raw": [{
         "PathSegments": [
           "'DATA'",
           "yyyy-MM"
@@ -36,7 +36,7 @@ To use it, put a `config.json` with the following sample content into the databa
             }
           ]
         }
-      }
+      }]
     }
   }
 }

@@ -1,7 +1,7 @@
 {
   "/A/B/C": {
-    "FileSources": {
-      "raw": {
+    "FileSourceGroups": {
+      "raw": [{
         "PathSegments": [
           "'DATA'",
           "yyyy-MM"
@@ -31,7 +31,7 @@
             }
           ]
         }
-      }
+      }]
     }
   }
 }

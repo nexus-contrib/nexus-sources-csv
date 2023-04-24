@@ -60,7 +60,7 @@ namespace Nexus.Sources.Tests
             // act
             var catalog = await dataSource.GetCatalogAsync("/A/B/C", CancellationToken.None);
             var resource1 = catalog.Resources![0];
-            var resource2 = catalog.Resources!.Last();
+            var resource2 = catalog.Resources![catalog.Resources.Count - 1];
             var representation1 = resource1!.Representations![0];
             var representation2 = resource2!.Representations![0];
 
