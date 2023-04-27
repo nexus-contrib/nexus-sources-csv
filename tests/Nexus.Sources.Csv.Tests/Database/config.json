@@ -16,8 +16,9 @@
           "InvalidValue": "999",
           "CodePage": 0,
           "HeaderRow": 2,
+          "UnitRow": 3,
           "SkipColumnPattern": "Date|Time|IgnoreMe",
-          "UnitPattern": "in (.*)",
+          "UnitPattern": "\\[(.*)\\]",
           "DefaultGroup": "raw",
           "GroupPattern": null,
           "ReplaceNameRules": [

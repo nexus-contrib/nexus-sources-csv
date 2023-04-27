@@ -38,7 +38,8 @@ namespace Nexus.Sources
             string[]? CatalogSourceFiles,
             ReplaceNameRule[]? ReplaceNameRules,
             char Separator = ',',
-            char DecimalSeparator = '.');
+            char DecimalSeparator = '.',
+            int UnitRow = -1);
 
         #region Fields
 
@@ -126,8 +127,8 @@ namespace Nexus.Sources
                     {
                         using var reader = new StreamReader(File.OpenRead(filePath), encoding);
 
-                        var headerLine = ReadHeaderLine(reader, additionalProperties);
-                        var resourceProperties = GetResourceProperties(headerLine, additionalProperties);
+                        var (headerLine, unitLine) = ReadHeaderAndUnitLine(reader, additionalProperties);
+                        var resourceProperties = GetResourceProperties(headerLine, unitLine, additionalProperties);
 
                         foreach (var resourceProperty in resourceProperties)
                         {
@@ -188,7 +189,7 @@ namespace Nexus.Sources
                 using var reader = new StreamReader(File.OpenRead(info.FilePath), encoding);
 
                 // find index
-                var headerLine = ReadHeaderLine(reader, additionalProperties);
+                var (headerLine, _) = ReadHeaderAndUnitLine(reader, additionalProperties);
 
                 var index = headerLine
                     .Split(additionalProperties.Separator)
@@ -251,39 +252,49 @@ namespace Nexus.Sources
             }, cancellationToken);
         }
 
-        private static string ReadHeaderLine(
+        private static (string HeaderLine, string UnitLine) ReadHeaderAndUnitLine(
             StreamReader reader,
             AdditionalProperties additionalProperties)
         {
-            // read header line
-            for (int i = 1; i < additionalProperties.HeaderRow; i++)
-            {
-                var skippedLine = reader.ReadLine();
+            if (additionalProperties.UnitRow < 0)
+                additionalProperties = additionalProperties with { UnitRow = additionalProperties.HeaderRow };
 
-                if (skippedLine is null)
+            var maxRow = Math.Max(additionalProperties.HeaderRow, additionalProperties.UnitRow);
+
+            string headerLine = default!;
+            string unitLine = default!;
+
+            for (int i = 0; i < maxRow; i++)
+            {
+                var line = reader.ReadLine();
+
+                if (line is null)
                     throw new Exception("The file is incomplete.");
+
+                if (i == (additionalProperties.HeaderRow - 1))
+                    headerLine = line;
+
+                if (i == (additionalProperties.UnitRow - 1))
+                    unitLine = line;
             }
 
-            var headerLine = reader.ReadLine();
-
-            if (headerLine is null)
-                throw new Exception("The file is incomplete.");
-
-            return headerLine;
+            return (headerLine, unitLine);
         }
 
         private static List<(string, string, string?, string?)> GetResourceProperties(
             string headerLine,
+            string unitLine,
             AdditionalProperties additionalProperties)
         {
             // analyse header line
             var resourceProperties = new List<(string, string, string?, string?)>();
-            var columns = headerLine.Split(additionalProperties.Separator);
+            var headerColumns = headerLine.Split(additionalProperties.Separator);
+            var unitColumns = unitLine.Split(additionalProperties.Separator);
 
-            for (int i = 0; i < columns.Length; i++)
+            for (int i = 0; i < headerColumns.Length; i++)
             {
                 // skip columns
-                var originalName = columns[i];
+                var originalName = headerColumns[i];
 
                 if (additionalProperties.SkipColumnPattern is not null)
                 {
@@ -298,8 +309,8 @@ namespace Nexus.Sources
                 var unit = default(string?);
 
                 if (additionalProperties.UnitPattern is not null)
-                {
-                    var match = Regex.Match(originalName, additionalProperties.UnitPattern);
+                {   
+                    var match = Regex.Match(unitColumns[i], additionalProperties.UnitPattern);
 
                     if (match.Success)
                         unit = match.Groups[1].Value;

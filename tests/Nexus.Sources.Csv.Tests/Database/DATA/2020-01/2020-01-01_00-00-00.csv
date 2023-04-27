@@ -1,5 +1,6 @@
 Ignore this row!
-Date;Time;This Is The Foo Variable in m/s;IgnoreMe; Anything in °C
+Date;Time;This Is The Foo Variable;IgnoreMe;Anything
+UnitRow;-;[m/s];IgnoreMe; Anything in [°C]
 2020-01-01;00:00:00;1.5994;NaN;1
 2020-01-01;00:00:01;2e9;NaN;999
 2020-01-01;00:00:02;-10.34e-3;NaN;2
