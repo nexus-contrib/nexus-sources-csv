@@ -1,3 +1,7 @@
+## v2.0.0-beta.3 - 2023-07-12
+
+Read multiple columns at once to improve performance and improve extensibility.
+
 ## v2.0.0-beta.2 - 2023-04-27
 
 Add support for units located on a separate line.

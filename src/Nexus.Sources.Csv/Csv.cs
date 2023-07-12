@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -19,7 +20,7 @@ namespace Nexus.Sources
     {
         record CatalogDescription(
             string Title,
-            Dictionary<string, IReadOnlyList<FileSource>> FileSourceGroups, 
+            Dictionary<string, IReadOnlyList<FileSource>> FileSourceGroups,
             JsonElement? AdditionalProperties);
 
         record ReplaceNameRule(
@@ -168,7 +169,7 @@ namespace Nexus.Sources
             return Task.FromResult(catalog);
         }
 
-        protected override Task ReadSingleAsync(ReadInfo info, CancellationToken cancellationToken)
+        protected override Task ReadAsync(ReadInfo info, StructuredFileReadRequest[] readRequests, CancellationToken cancellationToken)
         {
             return Task.Run(() =>
             {
@@ -188,44 +189,62 @@ namespace Nexus.Sources
                 var encoding = Encoding.GetEncoding(additionalProperties.CodePage);
                 using var reader = new StreamReader(File.OpenRead(info.FilePath), encoding);
 
-                // find index
-                int index;
+                // buffers
+                var owners = new IMemoryOwner<double>[readRequests.Length];
+                var buffers = new Memory<double>[readRequests.Length];
+
+                for (int i = 0; i < buffers.Length; i++)
+                {
+                    var owner = MemoryPool<double>.Shared.Rent((int)info.FileBlock);
+                    owners[i] = owner;
+                    buffers[i] = owner.Memory[..(int)info.FileBlock];
+                }
+
+                // find indices
+                int[] indices;
 
                 if (additionalProperties.HeaderRow == -1)
                 {
-                    index = GetIndex(info);
+                    indices = GetIndices(readRequests);
                 }
 
                 else
                 {
                     var (headerLine, _) = ReadHeaderAndUnitLine(reader, additionalProperties);
 
-                    index = headerLine
+                    var parts = headerLine
                         .Split(additionalProperties.Separator)
-                        .ToList()
-                        .FindIndex(current => current == info.OriginalName);
+                        .ToList();
+
+                    indices = readRequests
+                        .Select(readRequest => parts.FindIndex(current => current == readRequest.OriginalName))
+                        .ToArray();
                 }
 
-                if (index > -1)
+                // seek
+                for (int i = 0; i < info.FileOffset; i++)
                 {
-                    // seek
-                    for (int i = 0; i < info.FileOffset; i++)
+                    reader.ReadLine();
+                }
+
+                // read
+                for (int i = 0; i < info.FileBlock; i++)
+                {
+                    var line = reader.ReadLine();
+
+                    if (line is null)
                     {
-                        reader.ReadLine();
+                        Logger.LogDebug("The actual buffer size does not match the expected size, which indicates an incomplete file");
+                        return;
                     }
 
-                    // read
-                    var buffer = new double[info.FileBlock];
-
-                    for (int i = 0; i < info.FileBlock; i++)
+                    // for each read request
+                    for (int j = 0; j < readRequests.Length; j++)
                     {
-                        var line = reader.ReadLine();
+                        var index = indices[j];
 
-                        if (line is null)
-                        {
-                            Logger.LogDebug("The actual buffer size does not match the expected size, which indicates an incomplete file");
-                            return;
-                        }
+                        if (index == -1)
+                            continue;
 
                         if (!TryGetCell(line, index, additionalProperties.Separator, out var cell))
                         {
@@ -235,7 +254,7 @@ namespace Nexus.Sources
 
                         if (MemoryExtensions.Equals(cell, additionalProperties.InvalidValue, StringComparison.Ordinal))
                         {
-                            buffer[i] = double.NaN;
+                            buffers[j].Span[i] = double.NaN;
                         }
 
                         else
@@ -243,17 +262,20 @@ namespace Nexus.Sources
                             if (!double.TryParse(cell, NumberStyles.Float, nfi, out var value))
                                 value = double.NaN;
 
-                            buffer[i] = value;
-                        }
+                            buffers[j].Span[i] = value;
+                        }   
                     }
+                }
 
-                    cancellationToken.ThrowIfCancellationRequested();
+                cancellationToken.ThrowIfCancellationRequested();
 
-                    // write data
-                    MemoryMarshal.AsBytes(buffer.AsSpan())
-                        .CopyTo(info.Data.Span);
+                // write data
+                for (int i = 0; i < readRequests.Length; i++)
+                {
+                    MemoryMarshal.AsBytes(buffers[i].Span)
+                        .CopyTo(readRequests[i].Data.Span);
 
-                    info
+                    readRequests[i]
                         .Status
                         .Span
                         .Fill(1);
@@ -261,9 +283,11 @@ namespace Nexus.Sources
             }, cancellationToken);
         }
 
-        protected virtual int GetIndex(ReadInfo info)
+        protected virtual int[] GetIndices(StructuredFileReadRequest[] readRequests)
         {
-            return -1;
+            return readRequests
+                .Select(readRequest => -1)
+                .ToArray();
         }
 
         private static (string HeaderLine, string UnitLine) ReadHeaderAndUnitLine(
