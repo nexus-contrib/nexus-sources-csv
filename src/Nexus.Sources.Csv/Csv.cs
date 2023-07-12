@@ -189,12 +189,22 @@ namespace Nexus.Sources
                 using var reader = new StreamReader(File.OpenRead(info.FilePath), encoding);
 
                 // find index
-                var (headerLine, _) = ReadHeaderAndUnitLine(reader, additionalProperties);
+                int index;
 
-                var index = headerLine
-                    .Split(additionalProperties.Separator)
-                    .ToList()
-                    .FindIndex(current => current == info.OriginalName);
+                if (additionalProperties.HeaderRow == -1)
+                {
+                    index = GetIndex(info);
+                }
+
+                else
+                {
+                    var (headerLine, _) = ReadHeaderAndUnitLine(reader, additionalProperties);
+
+                    index = headerLine
+                        .Split(additionalProperties.Separator)
+                        .ToList()
+                        .FindIndex(current => current == info.OriginalName);
+                }
 
                 if (index > -1)
                 {
@@ -206,7 +216,6 @@ namespace Nexus.Sources
 
                     // read
                     var buffer = new double[info.FileBlock];
-                    var byteBuffer = MemoryMarshal.AsBytes(buffer.AsSpan());
 
                     for (int i = 0; i < info.FileBlock; i++)
                     {
@@ -241,7 +250,7 @@ namespace Nexus.Sources
                     cancellationToken.ThrowIfCancellationRequested();
 
                     // write data
-                    byteBuffer
+                    MemoryMarshal.AsBytes(buffer.AsSpan())
                         .CopyTo(info.Data.Span);
 
                     info
@@ -250,6 +259,11 @@ namespace Nexus.Sources
                         .Fill(1);
                 }
             }, cancellationToken);
+        }
+
+        protected virtual int GetIndex(ReadInfo info)
+        {
+            return -1;
         }
 
         private static (string HeaderLine, string UnitLine) ReadHeaderAndUnitLine(
@@ -266,10 +280,7 @@ namespace Nexus.Sources
 
             for (int i = 0; i < maxRow; i++)
             {
-                var line = reader.ReadLine();
-
-                if (line is null)
-                    throw new Exception("The file is incomplete.");
+                var line = reader.ReadLine() ?? throw new Exception("The file is incomplete.");
 
                 if (i == (additionalProperties.HeaderRow - 1))
                     headerLine = line;
