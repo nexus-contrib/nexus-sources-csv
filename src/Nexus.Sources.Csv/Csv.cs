@@ -18,16 +18,16 @@ namespace Nexus.Sources
         "https://github.com/Apollo3zehn/nexus-sources-csv")]
     public class Csv : StructuredFileDataSource
     {
-        record CatalogDescription(
+        private record CatalogDescription(
             string Title,
             Dictionary<string, IReadOnlyList<FileSource>> FileSourceGroups,
             JsonElement? AdditionalProperties);
 
-        record ReplaceNameRule(
+        private record ReplaceNameRule(
             string Pattern,
             string Replacement);
 
-        record AdditionalProperties(
+        private record AdditionalProperties(
             TimeSpan SamplePeriod,
             string? InvalidValue,
             int CodePage,
