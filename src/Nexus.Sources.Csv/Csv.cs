@@ -193,92 +193,102 @@ namespace Nexus.Sources
                 var owners = new IMemoryOwner<double>[readRequests.Length];
                 var buffers = new Memory<double>[readRequests.Length];
 
-                for (int i = 0; i < buffers.Length; i++)
+                try
                 {
-                    var owner = MemoryPool<double>.Shared.Rent((int)info.FileBlock);
-                    owners[i] = owner;
-                    buffers[i] = owner.Memory[..(int)info.FileBlock];
-                }
-
-                // find indices
-                int[] indices;
-
-                if (additionalProperties.HeaderRow == -1)
-                {
-                    indices = GetIndices(readRequests);
-                }
-
-                else
-                {
-                    var (headerLine, _) = ReadHeaderAndUnitLine(reader, additionalProperties);
-
-                    var parts = headerLine
-                        .Split(additionalProperties.Separator)
-                        .ToList();
-
-                    indices = readRequests
-                        .Select(readRequest => parts.FindIndex(current => current == readRequest.OriginalName))
-                        .ToArray();
-                }
-
-                // seek
-                for (int i = 0; i < info.FileOffset; i++)
-                {
-                    reader.ReadLine();
-                }
-
-                // read
-                for (int i = 0; i < info.FileBlock; i++)
-                {
-                    var line = reader.ReadLine();
-
-                    if (line is null)
+                    for (int i = 0; i < buffers.Length; i++)
                     {
-                        Logger.LogDebug("The actual buffer size does not match the expected size, which indicates an incomplete file");
-                        return;
+                        var owner = MemoryPool<double>.Shared.Rent((int)info.FileBlock);
+                        owners[i] = owner;
+                        buffers[i] = owner.Memory[..(int)info.FileBlock];
                     }
 
-                    // for each read request
-                    for (int j = 0; j < readRequests.Length; j++)
+                    // find indices
+                    int[] indices;
+
+                    if (additionalProperties.HeaderRow == -1)
                     {
-                        var index = indices[j];
+                        indices = GetIndices(readRequests);
+                    }
 
-                        if (index == -1)
-                            continue;
+                    else
+                    {
+                        var (headerLine, _) = ReadHeaderAndUnitLine(reader, additionalProperties);
 
-                        if (!TryGetCell(line, index, additionalProperties.Separator, out var cell))
+                        var parts = headerLine
+                            .Split(additionalProperties.Separator)
+                            .ToList();
+
+                        indices = readRequests
+                            .Select(readRequest => parts.FindIndex(current => current == readRequest.OriginalName))
+                            .ToArray();
+                    }
+
+                    // seek
+                    for (int i = 0; i < info.FileOffset; i++)
+                    {
+                        reader.ReadLine();
+                    }
+
+                    // read
+                    for (int i = 0; i < info.FileBlock; i++)
+                    {
+                        var line = reader.ReadLine();
+
+                        if (line is null)
                         {
                             Logger.LogDebug("The actual buffer size does not match the expected size, which indicates an incomplete file");
                             return;
                         }
 
-                        if (MemoryExtensions.Equals(cell, additionalProperties.InvalidValue, StringComparison.Ordinal))
+                        // for each read request
+                        for (int j = 0; j < readRequests.Length; j++)
                         {
-                            buffers[j].Span[i] = double.NaN;
+                            var index = indices[j];
+
+                            if (index == -1)
+                                continue;
+
+                            if (!TryGetCell(line, index, additionalProperties.Separator, out var cell))
+                            {
+                                Logger.LogDebug("The actual buffer size does not match the expected size, which indicates an incomplete file");
+                                return;
+                            }
+
+                            if (MemoryExtensions.Equals(cell, additionalProperties.InvalidValue, StringComparison.Ordinal))
+                            {
+                                buffers[j].Span[i] = double.NaN;
+                            }
+
+                            else
+                            {
+                                if (!double.TryParse(cell, NumberStyles.Float, nfi, out var value))
+                                    value = double.NaN;
+
+                                buffers[j].Span[i] = value;
+                            }   
                         }
-
-                        else
-                        {
-                            if (!double.TryParse(cell, NumberStyles.Float, nfi, out var value))
-                                value = double.NaN;
-
-                            buffers[j].Span[i] = value;
-                        }   
                     }
+
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    // write data
+                    for (int i = 0; i < readRequests.Length; i++)
+                    {
+                        MemoryMarshal.AsBytes(buffers[i].Span)
+                            .CopyTo(readRequests[i].Data.Span);
+
+                        readRequests[i]
+                            .Status
+                            .Span
+                            .Fill(1);
+                    }   
                 }
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // write data
-                for (int i = 0; i < readRequests.Length; i++)
+                finally
                 {
-                    MemoryMarshal.AsBytes(buffers[i].Span)
-                        .CopyTo(readRequests[i].Data.Span);
-
-                    readRequests[i]
-                        .Status
-                        .Span
-                        .Fill(1);
+                    foreach (var owner in owners)
+                    {
+                        owner?.Dispose();
+                    }
                 }
             }, cancellationToken);
         }

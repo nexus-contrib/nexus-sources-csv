@@ -1,3 +1,7 @@
+## v2.0.0-beta.4 - 2023-07-13
+
+Dispose rented memories.
+
 ## v2.0.0-beta.3 - 2023-07-12
 
 Read multiple columns at once to improve performance and improve extensibility.
