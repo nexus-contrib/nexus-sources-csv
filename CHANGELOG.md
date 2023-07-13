@@ -1,3 +1,7 @@
+## v2.0.0-beta.5 - 2023-07-13
+
+Also pass `ReadInfo` to the `GetIndices()` method.
+
 ## v2.0.0-beta.4 - 2023-07-13
 
 Dispose rented memories.

@@ -207,7 +207,7 @@ namespace Nexus.Sources
 
                     if (additionalProperties.HeaderRow == -1)
                     {
-                        indices = GetIndices(readRequests);
+                        indices = GetIndices(info, readRequests);
                     }
 
                     else
@@ -293,7 +293,7 @@ namespace Nexus.Sources
             }, cancellationToken);
         }
 
-        protected virtual int[] GetIndices(StructuredFileReadRequest[] readRequests)
+        protected virtual int[] GetIndices(ReadInfo info, StructuredFileReadRequest[] readRequests)
         {
             return readRequests
                 .Select(readRequest => -1)
