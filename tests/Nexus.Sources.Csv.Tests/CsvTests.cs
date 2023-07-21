@@ -36,15 +36,15 @@ namespace Nexus.Sources.Tests
             var expectedStartDate = new DateTime(2020, 01, 01, 00, 00, 00);
             var expectedEndDate = new DateTime(2020, 01, 01, 00, 00, 10);
 
-            Assert.True(expectedIds.SequenceEqual(actualIds));
-            Assert.True(expectedUnits.SequenceEqual(actualUnits));
-            Assert.True(expectedGroups.SequenceEqual(actualGroups));
+            Assert.True(expectedIds.SequenceEqual(actualIds.Take(2)));
+            Assert.True(expectedUnits.SequenceEqual(actualUnits.Take(2)));
+            Assert.True(expectedGroups.SequenceEqual(actualGroups.Take(2)));
             Assert.Equal(expectedStartDate, begin);
             Assert.Equal(expectedEndDate, end);
         }
 
         [Fact]
-        public async Task CanRead()
+        public async Task CanRead_Equidistant()
         {
             // arrange
             var dataSource = new Csv() as IDataSource;
@@ -60,7 +60,7 @@ namespace Nexus.Sources.Tests
             // act
             var catalog = await dataSource.GetCatalogAsync("/A/B/C", CancellationToken.None);
             var resource1 = catalog.Resources![0];
-            var resource2 = catalog.Resources![catalog.Resources.Count - 1];
+            var resource2 = catalog.Resources![1];
             var representation1 = resource1!.Representations![0];
             var representation2 = resource2!.Representations![0];
 
@@ -112,6 +112,58 @@ namespace Nexus.Sources.Tests
                 Assert.Equal(1, result2.Status.Span[0]);
                 Assert.Equal(1, result2.Status.Span[8]);
                 Assert.Equal(0, result2.Status.Span[9]);
+            }
+
+            DoAssert();
+        }
+
+        [Fact]
+        public async Task CanRead_DateTime()
+        {
+            // arrange
+            var dataSource = new Csv() as IDataSource;
+
+            var context = new DataSourceContext(
+                ResourceLocator: new Uri("Database", UriKind.Relative),
+                SystemConfiguration: default!,
+                SourceConfiguration: default!,
+                RequestConfiguration: default!);
+
+            await dataSource.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
+
+            // act
+            var catalog = await dataSource.GetCatalogAsync("/A/B/C", CancellationToken.None);
+            var resource = catalog.Resources![2];
+            var representation = resource!.Representations![0];
+            var catalogItem = new CatalogItem(catalog, resource, representation, default);
+
+            var begin = new DateTime(2020, 01, 01, 0, 0, 1, DateTimeKind.Utc);
+            var end = new DateTime(2020, 01, 01, 0, 0, 11, DateTimeKind.Utc);
+            var (data, status) = ExtensibilityUtilities.CreateBuffers(representation, begin, end);
+
+            var result = new ReadRequest(catalogItem, data, status);
+            await dataSource.ReadAsync(begin, end, new ReadRequest[] { result }, default!, new Progress<double>(), CancellationToken.None);
+
+            // assert
+            void DoAssert()
+            {
+                // result 1
+                var data1 = MemoryMarshal.Cast<byte, double>(result.Data.Span);
+
+                Assert.Equal(2e9, data1[0]);
+                Assert.Equal(-10.34e-3, data1[1]);
+                Assert.Equal(4, data1[2]);
+                Assert.Equal(5, data1[3]);
+                Assert.Equal(0, data1[4]);
+                Assert.Equal(6.99, data1[5]);
+                Assert.Equal(7.99, data1[6]);
+                Assert.Equal(8.99, data1[7]);
+                Assert.Equal(9.99, data1[8]);
+
+                Assert.Equal(1, result.Status.Span[0]);
+                Assert.Equal(0, result.Status.Span[4]);
+                Assert.Equal(1, result.Status.Span[8]);
+                Assert.Equal(0, result.Status.Span[9]);
             }
 
             DoAssert();

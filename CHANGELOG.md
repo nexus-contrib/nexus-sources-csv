@@ -1,3 +1,7 @@
+## v2.0.0-beta.6 - 2023-07-21
+
+Enable reading of datetime column to determine current row.
+
 ## v2.0.0-beta.5 - 2023-07-13
 
 Also pass `ReadInfo` to the `GetIndices()` method.
