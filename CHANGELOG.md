@@ -1,3 +1,7 @@
+## v2.0.0-beta.10 - 2023-07-21
+
+Do not seek if in datetime mode.
+
 ## v2.0.0-beta.9 - 2023-07-21
 
 Depend on new version of structure data source.

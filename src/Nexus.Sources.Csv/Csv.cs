@@ -217,12 +217,6 @@ public class Csv : StructuredFileDataSource
                     .ToArray();
             }
 
-            // seek
-            for (int i = 0; i < info.FileOffset; i++)
-            {
-                reader.ReadLine();
-            }
-
             // read
             var buffers = readRequests
                 .Select(readRequest => new CastMemoryManager<byte, double>(readRequest.Data).Memory)
@@ -230,6 +224,12 @@ public class Csv : StructuredFileDataSource
 
             if (additionalProperties.DateTimeModeOptions is null)
             {
+                // seek
+                for (int i = 0; i < info.FileOffset; i++)
+                {
+                    reader.ReadLine();
+                }
+
                 for (int i = 0; i < info.FileBlock; i++)
                 {
                     var line = reader.ReadLine();
