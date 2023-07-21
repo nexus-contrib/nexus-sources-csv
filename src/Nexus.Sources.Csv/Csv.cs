@@ -297,7 +297,11 @@ public class Csv : StructuredFileDataSource
                         return;
                     };
 
-                    var dateTime = DateTime.ParseExact(dateTimeCell, dateTimePattern, CultureInfo.InvariantCulture);
+                    var dateTime = DateTime.ParseExact(dateTimeCell, dateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal);
+
+                    if (dateTime.Kind == DateTimeKind.Unspecified)
+                        dateTime = DateTime.SpecifyKind(dateTime.Add(-info.FileSource.UtcOffset), DateTimeKind.Utc);
+
                     var i = (int)((dateTime - info.FileBegin).Ticks / samplePeriod.Ticks - info.FileOffset);
 
                     if (i < 0 || i >= info.FileBlock)

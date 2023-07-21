@@ -42,7 +42,7 @@
         ],
         "FileTemplate": "yyyy-MM-dd_HH-mm-ss'.csv'",
         "FilePeriod": "00:00:10",
-        "UtcOffset": "00:00:00",
+        "UtcOffset": "01:00:00",
         "AdditionalProperties": {
           "SamplePeriod": "00:00:01",
           "CodePage": 0,
@@ -51,7 +51,7 @@
           "DefaultGroup": "raw",
           "DateTimeModeOptions": {
             "Column": 1,
-            "Pattern": "yyyy-MM-ddTHH:mm:ss.fff"
+            "Pattern": "yyyy-MM-ddTHH:mm:ss.fffzz"
           },
           "Separator": ";"
         }

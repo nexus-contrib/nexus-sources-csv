@@ -1,3 +1,7 @@
+## v2.0.0-beta.7 - 2023-07-21
+
+Add support for timezones.
+
 ## v2.0.0-beta.6 - 2023-07-21
 
 Enable reading of datetime column to determine current row.
