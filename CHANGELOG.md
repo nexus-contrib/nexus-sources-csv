@@ -1,3 +1,7 @@
+## v2.0.0-beta.8 - 2023-07-21
+
+Depend on new version of structure data source.
+
 ## v2.0.0-beta.7 - 2023-07-21
 
 Add support for timezones.
