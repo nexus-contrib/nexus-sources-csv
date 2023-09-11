@@ -1,3 +1,7 @@
+## v2.0.0-beta.11 - 2023-09-11
+
+Follow Nexus changes.
+
 ## v2.0.0-beta.10 - 2023-07-21
 
 Do not seek if in datetime mode.
