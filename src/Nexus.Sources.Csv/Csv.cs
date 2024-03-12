@@ -410,6 +410,11 @@ public class Csv : StructuredFileDataSource
                 if (match.Success)
                     unit = match.Groups[1].Value;
             }
+            
+            else if (additionalProperties.UnitRow != -1)
+            {
+                unit = unitColumns[i];
+            }
 
             // try get group
             var group = default(string?);

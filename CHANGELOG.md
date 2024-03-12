@@ -1,3 +1,7 @@
+## v2.0.0-beta.15 - 2024-03-12
+
+Make `UnitPattern` optional when `UnitRow` is given.
+
 ## v2.0.0-beta.14 - 2024-03-12
 
 Add optional DataRow property to account for additional header rows that do not contain data.
