@@ -44,7 +44,8 @@ public class Csv : StructuredFileDataSource
         DateTimeModeOptions? DateTimeModeOptions,
         char Separator = ',',
         char DecimalSeparator = '.',
-        int UnitRow = -1);
+        int UnitRow = -1,
+        int DataRow = -1);
 
     #region Fields
 
@@ -354,7 +355,9 @@ public class Csv : StructuredFileDataSource
         if (additionalProperties.UnitRow < 0)
             additionalProperties = additionalProperties with { UnitRow = additionalProperties.HeaderRow };
 
-        var maxRow = Math.Max(additionalProperties.HeaderRow, additionalProperties.UnitRow);
+        var maxRow = Math.Max(
+            Math.Max(additionalProperties.HeaderRow, additionalProperties.UnitRow), 
+            additionalProperties.DataRow);
 
         string headerLine = default!;
         string unitLine = default!;

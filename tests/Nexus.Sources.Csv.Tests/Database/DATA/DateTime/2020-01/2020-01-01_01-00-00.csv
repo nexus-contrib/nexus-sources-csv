@@ -1,4 +1,5 @@
 DateTime;This Is The Foo Variable2;IgnoreMe;Anything2
+Useless row
 2020-01-01T01:00:00.000+01;1.5994;NaN;1
 2020-01-01T01:00:01.200+01;2e9;NaN;999
 2020-01-01T01:00:02.400+01;-10.34e-3;NaN;2

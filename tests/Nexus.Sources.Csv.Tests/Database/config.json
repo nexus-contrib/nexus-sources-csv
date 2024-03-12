@@ -47,6 +47,7 @@
           "SamplePeriod": "00:00:01",
           "CodePage": 0,
           "HeaderRow": 1,
+          "DataRow": 3,
           "SkipColumnPattern": "DateTime|IgnoreMe",
           "DefaultGroup": "raw",
           "DateTimeModeOptions": {
