@@ -124,7 +124,7 @@ public class Csv : StructuredFileDataSource
                     if (!TryGetFirstFile(fileSource, out var filePath))
                         continue;
 
-                    filePaths = new[] { filePath };
+                    filePaths = [filePath];
                 }
 
                 var encoding = Encoding.GetEncoding(additionalProperties.CodePage);
@@ -175,7 +175,7 @@ public class Csv : StructuredFileDataSource
     }
 
     protected override Task ReadAsync(
-        ReadInfo info, 
+        ReadInfo info,
         StructuredFileReadRequest[] readRequests,
         CancellationToken cancellationToken)
     {
@@ -266,7 +266,7 @@ public class Csv : StructuredFileDataSource
                                 value = double.NaN;
 
                             buffers[j].Span[i] = value;
-                        }   
+                        }
                     }
                 }
 
@@ -334,7 +334,7 @@ public class Csv : StructuredFileDataSource
 
                             buffers[j].Span[i] = value;
                             readRequests[j].Status.Span[i] = 1;
-                        }   
+                        }
                     }
                 }
             }
@@ -356,7 +356,7 @@ public class Csv : StructuredFileDataSource
             additionalProperties = additionalProperties with { UnitRow = additionalProperties.HeaderRow };
 
         var maxRow = Math.Max(
-            Math.Max(additionalProperties.HeaderRow, additionalProperties.UnitRow), 
+            Math.Max(additionalProperties.HeaderRow, additionalProperties.UnitRow),
             additionalProperties.DataRow);
 
         string headerLine = default!;
@@ -404,13 +404,13 @@ public class Csv : StructuredFileDataSource
             var unit = default(string?);
 
             if (additionalProperties.UnitPattern is not null)
-            {   
+            {
                 var match = Regex.Match(unitColumns[i], additionalProperties.UnitPattern);
 
                 if (match.Success)
                     unit = match.Groups[1].Value;
             }
-            
+
             else if (additionalProperties.UnitRow != -1)
             {
                 unit = unitColumns[i];
@@ -497,7 +497,7 @@ public class Csv : StructuredFileDataSource
 
         else
             cell = slicedLine[..nextSeparatorIndex];
-        
+
         return true;
     }
 
@@ -533,7 +533,7 @@ public class Csv : StructuredFileDataSource
                     return true;
                 }
 
-                else 
+                else
                 {
                     var nextCharIsQuote = slicedLine[0] == '"';
 
