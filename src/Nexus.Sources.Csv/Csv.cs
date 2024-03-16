@@ -124,7 +124,7 @@ public class Csv : StructuredFileDataSource
                     if (!TryGetFirstFile(fileSource, out var filePath))
                         continue;
 
-                    filePaths = new string[] { filePath };
+                    filePaths = [filePath];
                 }
 
                 var encoding = Encoding.GetEncoding(additionalProperties.CodePage);

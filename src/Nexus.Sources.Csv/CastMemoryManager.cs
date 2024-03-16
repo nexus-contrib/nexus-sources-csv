@@ -3,13 +3,11 @@ using System.Runtime.InteropServices;
 
 namespace Nexus.Sources;
 
-internal class CastMemoryManager<TFrom, TTo> : MemoryManager<TTo>
+internal class CastMemoryManager<TFrom, TTo>(Memory<TFrom> from) : MemoryManager<TTo>
      where TFrom : struct
      where TTo : struct
 {
-    private readonly Memory<TFrom> _from;
-
-    public CastMemoryManager(Memory<TFrom> from) => _from = from;
+    private readonly Memory<TFrom> _from = from;
 
     public override Span<TTo> GetSpan() => MemoryMarshal.Cast<TFrom, TTo>(_from.Span);
 

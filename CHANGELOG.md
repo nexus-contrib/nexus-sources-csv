@@ -1,3 +1,7 @@
+## v2.0.0-beta.26 - 2024-03-16
+
+- Follow Nexus changes.
+
 ## v2.0.0-beta.15 - 2024-03-12
 
 Make `UnitPattern` optional when `UnitRow` is given.
