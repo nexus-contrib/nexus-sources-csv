@@ -24,11 +24,14 @@ public class Csv : StructuredFileDataSource
 
     private record ReplaceNameRule(
         string Pattern,
-        string Replacement);
+        string Replacement
+    );
 
     private record DateTimeModeOptions(
         int Column,
-        string Pattern);
+        string Pattern,
+        TimeSpan TimestampOffset
+    );
 
     private record AdditionalProperties(
         TimeSpan SamplePeriod,
@@ -285,7 +288,7 @@ public class Csv : StructuredFileDataSource
             else
             {
                 var samplePeriod = readRequests.First().CatalogItem.Representation.SamplePeriod;
-                var (dateTimeColumn, dateTimePattern) = additionalProperties.DateTimeModeOptions;
+                var (dateTimeColumn, dateTimePattern, timestampOffset) = additionalProperties.DateTimeModeOptions;
 
                 string? line;
 
@@ -298,7 +301,9 @@ public class Csv : StructuredFileDataSource
                         return;
                     };
 
-                    var dateTime = DateTime.ParseExact(dateTimeCell, dateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal);
+                    var dateTime = DateTime
+                        .ParseExact(dateTimeCell, dateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal)
+                        .Add(-timestampOffset);
 
                     if (dateTime.Kind == DateTimeKind.Unspecified)
                         dateTime = DateTime.SpecifyKind(dateTime.Add(-info.FileSource.UtcOffset), DateTimeKind.Utc);
