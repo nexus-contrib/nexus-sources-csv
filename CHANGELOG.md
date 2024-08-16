@@ -1,4 +1,4 @@
-## v2.0.0-beta.26 - 2024-03-16
+## v2.0.0-beta.27 - 2024-08-16
 
 - Add `TimestampOffset` option.
 
