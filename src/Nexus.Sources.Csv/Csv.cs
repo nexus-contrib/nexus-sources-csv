@@ -308,7 +308,7 @@ public class Csv : StructuredFileDataSource
                     if (dateTime.Kind == DateTimeKind.Unspecified)
                         dateTime = DateTime.SpecifyKind(dateTime.Add(-info.FileSource.UtcOffset), DateTimeKind.Utc);
 
-                    var i = (int)((dateTime - info.FileBegin).Ticks / samplePeriod.Ticks - info.FileOffset);
+                    var i = (int)((dateTime - info.RegularFileBegin).Ticks / samplePeriod.Ticks - info.FileOffset);
 
                     if (i < 0 || i >= info.FileBlock)
                         continue;
