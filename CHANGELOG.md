@@ -1,3 +1,7 @@
+## v2.0.0-beta.28 - 2024-08-27
+
+- Follow Nexus.Sources.StructureFile changes.
+
 ## v2.0.0-beta.27 - 2024-08-16
 
 - Add `TimestampOffset` option.
