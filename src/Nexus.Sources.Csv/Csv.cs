@@ -94,10 +94,9 @@ public class Csv : StructuredFileDataSource
             return Task.FromResult(Array.Empty<CatalogRegistration>());
     }
 
-    protected override Task<ResourceCatalog> GetCatalogAsync(string catalogId, CancellationToken cancellationToken)
+    protected override Task<ResourceCatalog> EnrichCatalogAsync(ResourceCatalog catalog, CancellationToken cancellationToken)
     {
-        var catalogDescription = _config[catalogId];
-        var catalog = new ResourceCatalog(id: catalogId);
+        var catalogDescription = _config[catalog.Id];
 
         foreach (var (fileSourceId, fileSourceGroup) in catalogDescription.FileSourceGroups)
         {
@@ -105,7 +104,7 @@ public class Csv : StructuredFileDataSource
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var newCatalogBuilder = new ResourceCatalogBuilder(id: catalogId);
+                var newCatalogBuilder = new ResourceCatalogBuilder(id: catalog.Id);
 
                 if (fileSource.AdditionalProperties is null)
                     continue;
@@ -169,7 +168,6 @@ public class Csv : StructuredFileDataSource
                     }
 
                     catalog = catalog.Merge(newCatalogBuilder.Build());
-
                 }
             }
         }
@@ -179,7 +177,7 @@ public class Csv : StructuredFileDataSource
 
     protected override Task ReadAsync(
         ReadInfo info,
-        StructuredFileReadRequest[] readRequests,
+        ReadRequest[] readRequests,
         CancellationToken cancellationToken)
     {
         return Task.Run(() =>
@@ -217,7 +215,7 @@ public class Csv : StructuredFileDataSource
                     .ToList();
 
                 indices = readRequests
-                    .Select(readRequest => parts.FindIndex(current => current == readRequest.OriginalName))
+                    .Select(readRequest => parts.FindIndex(current => current == readRequest.OriginalResourceName))
                     .ToArray();
             }
 
@@ -346,7 +344,7 @@ public class Csv : StructuredFileDataSource
         }, cancellationToken);
     }
 
-    protected virtual int[] GetIndices(ReadInfo info, StructuredFileReadRequest[] readRequests)
+    protected virtual int[] GetIndices(ReadInfo info, ReadRequest[] readRequests)
     {
         return readRequests
             .Select(readRequest => -1)

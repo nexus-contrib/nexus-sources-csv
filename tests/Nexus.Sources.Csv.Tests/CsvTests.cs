@@ -23,7 +23,7 @@ public class CsvTests
         await dataSource.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
 
         // act
-        var actual = await dataSource.GetCatalogAsync("/A/B/C", CancellationToken.None);
+        var actual = await dataSource.EnrichCatalogAsync(new("/A/B/C"), CancellationToken.None);
         var actualIds = actual.Resources!.Select(resource => resource.Id).ToList();
         var actualUnits = actual.Resources!.Select(resource => resource.Properties?.GetStringValue("unit")).ToList();
         var actualGroups = actual.Resources!.SelectMany(resource => resource.Properties?.GetStringArray("groups")!).ToList();
@@ -58,7 +58,7 @@ public class CsvTests
         await dataSource.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
 
         // act
-        var catalog = await dataSource.GetCatalogAsync("/A/B/C", CancellationToken.None);
+        var catalog = await dataSource.EnrichCatalogAsync(new("/A/B/C"), CancellationToken.None);
         var resource1 = catalog.Resources![0];
         var resource2 = catalog.Resources![1];
         var representation1 = resource1!.Representations![0];
@@ -72,8 +72,8 @@ public class CsvTests
         var (data1, status1) = ExtensibilityUtilities.CreateBuffers(representation1, begin, end);
         var (data2, status2) = ExtensibilityUtilities.CreateBuffers(representation2, begin, end);
 
-        var result1 = new ReadRequest(catalogItem1, data1, status1);
-        var result2 = new ReadRequest(catalogItem2, data2, status2);
+        var result1 = new ReadRequest(resource1.Id, catalogItem1, data1, status1);
+        var result2 = new ReadRequest(resource2.Id, catalogItem2, data2, status2);
         await dataSource.ReadAsync(begin, end, [result1, result2], default!, new Progress<double>(), CancellationToken.None);
 
         // assert
@@ -132,7 +132,7 @@ public class CsvTests
         await dataSource.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
 
         // act
-        var catalog = await dataSource.GetCatalogAsync("/A/B/C", CancellationToken.None);
+        var catalog = await dataSource.EnrichCatalogAsync(new("/A/B/C"), CancellationToken.None);
         var resource = catalog.Resources![2];
         var representation = resource!.Representations![0];
         var catalogItem = new CatalogItem(catalog, resource, representation, default);
@@ -141,7 +141,7 @@ public class CsvTests
         var end = new DateTime(2020, 01, 01, 0, 0, 11, DateTimeKind.Utc);
         var (data, status) = ExtensibilityUtilities.CreateBuffers(representation, begin, end);
 
-        var result = new ReadRequest(catalogItem, data, status);
+        var result = new ReadRequest(resource.Id, catalogItem, data, status);
         await dataSource.ReadAsync(begin, end, [result], default!, new Progress<double>(), CancellationToken.None);
 
         // assert
