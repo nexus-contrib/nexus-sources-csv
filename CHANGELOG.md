@@ -1,10 +1,14 @@
-## v2.0.0-beta.28 - 2024-08-27
+## v2.0.0-beta.34 - 2024-12-20
 
-- Follow Nexus.Sources.StructureFile changes.
+- Bump dependencies
 
 ## v2.0.0-beta.33 - 2024-12-17
 
 - Follow Nexus changes.
+
+## v2.0.0-beta.28 - 2024-08-27
+
+- Follow Nexus.Sources.StructureFile changes.
 
 ## v2.0.0-beta.27 - 2024-08-16
 
