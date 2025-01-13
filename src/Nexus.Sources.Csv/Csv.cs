@@ -38,12 +38,10 @@ public class Csv : StructuredFileDataSource
         string? InvalidValue,
         int CodePage,
         int HeaderRow,
+        string? ResourceIdPrefix,
         string? SkipColumnPattern,
         string? UnitPattern,
-        string? DefaultGroup,
-        string? GroupPattern,
         string[]? CatalogSourceFiles,
-        ReplaceNameRule[]? ReplaceNameRules,
         DateTimeModeOptions? DateTimeModeOptions,
         char Separator = ',',
         char DecimalSeparator = '.',
@@ -143,9 +141,7 @@ public class Csv : StructuredFileDataSource
                         if (resourceProperty.Equals(default))
                             continue;
 
-                        var (originalName, resourceId, unit, group) = resourceProperty;
-
-                        group ??= additionalProperties.DefaultGroup;
+                        var (originalName, resourceId, unit) = resourceProperty;
 
                         // build representation
                         var representation = new Representation(
@@ -160,9 +156,6 @@ public class Csv : StructuredFileDataSource
 
                         if (unit is not null)
                             resourceBuilder.WithUnit(unit);
-
-                        if (group is not null)
-                            resourceBuilder.WithGroups(group);
 
                         newCatalogBuilder.AddResource(resourceBuilder.Build());
                     }
@@ -379,13 +372,13 @@ public class Csv : StructuredFileDataSource
         return (headerLine, unitLine);
     }
 
-    private static List<(string, string, string?, string?)> GetResourceProperties(
+    private static List<(string, string, string?)> GetResourceProperties(
         string headerLine,
         string unitLine,
         AdditionalProperties additionalProperties)
     {
         // analyse header line
-        var resourceProperties = new List<(string, string, string?, string?)>();
+        var resourceProperties = new List<(string, string, string?)>();
         var headerColumns = headerLine.Split(additionalProperties.Separator);
         var unitColumns = unitLine.Split(additionalProperties.Separator);
 
@@ -419,28 +412,17 @@ public class Csv : StructuredFileDataSource
                 unit = unitColumns[i];
             }
 
-            // try get group
-            var group = default(string?);
-
-            if (additionalProperties.GroupPattern is not null)
-            {
-                var match = Regex.Match(originalName, additionalProperties.GroupPattern);
-
-                if (match.Success)
-                    group = match.Groups[1].Value;
-            }
-
             // try get resource id
-            var resourceId = FormatResourceId(originalName, additionalProperties.ReplaceNameRules);
+            var prefixedOriginalName = additionalProperties.ResourceIdPrefix + originalName;
 
-            if (!TryEnforceNamingConvention(resourceId, out resourceId))
+            if (!TryEnforceNamingConvention(prefixedOriginalName, out var resourceId))
             {
                 resourceProperties.Add(default);
                 continue;
             }
 
             // 
-            resourceProperties.Add((originalName, resourceId, unit, group));
+            resourceProperties.Add((originalName, resourceId, unit));
         }
 
         return resourceProperties;
