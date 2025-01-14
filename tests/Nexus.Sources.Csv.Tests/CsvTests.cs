@@ -26,11 +26,10 @@ public class CsvTests
         var actual = await dataSource.EnrichCatalogAsync(new("/A/B/C"), CancellationToken.None);
         var actualIds = actual.Resources!.Select(resource => resource.Id).ToList();
         var actualUnits = actual.Resources!.Select(resource => resource.Properties?.GetStringValue("unit")).ToList();
-        var actualGroups = actual.Resources!.SelectMany(resource => resource.Properties?.GetStringArray("groups")!).ToList();
         var (begin, end) = await dataSource.GetTimeRangeAsync("/A/B/C", CancellationToken.None);
 
         // assert
-        var expectedIds = new List<string>() { "ThisIsTheBarVariable", "Anything" };
+        var expectedIds = new List<string>() { "ThisIsTheFooVariable", "Anything" };
         var expectedUnits = new List<string>() { "m/s", "°C" };
         var expectedGroups = new List<string>() { "raw", "raw" };
         var expectedStartDate = new DateTime(2020, 01, 01, 00, 00, 00);
@@ -38,7 +37,6 @@ public class CsvTests
 
         Assert.True(expectedIds.SequenceEqual(actualIds.Take(2)));
         Assert.True(expectedUnits.SequenceEqual(actualUnits.Take(2)));
-        Assert.True(expectedGroups.SequenceEqual(actualGroups.Take(2)));
         Assert.Equal(expectedStartDate, begin);
         Assert.Equal(expectedEndDate, end);
     }

@@ -17,6 +17,7 @@ To use it, put a `config.json` with the following sample content into the databa
         "FilePeriod": "00:00:10",
         "UtcOffset": "00:00:00",
         "AdditionalProperties": {
+          "ResourceIdPrefix": "myprefix_",
           "SamplePeriod": "00:00:01",
           "Separator": ";",
           "DecimalSeparator": ".",
@@ -24,17 +25,7 @@ To use it, put a `config.json` with the following sample content into the databa
           "CodePage": 0,
           "HeaderRow": 1,
           "SkipColumns": [ 0, 1, 3 ],
-          "UnitPattern": "in (.*)",
-          "ReplaceNameRules": [
-            {
-              "Pattern": "Foo",
-              "Replacement": "Bar"
-            },
-            {
-              "Pattern": " in (.*)",
-              "Replacement": ""
-            }
-          ]
+          "UnitPattern": "in (.*)"
         }
       }]
     }

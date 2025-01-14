@@ -22,11 +22,6 @@ public class Csv : StructuredFileDataSource
         Dictionary<string, IReadOnlyList<FileSource>> FileSourceGroups,
         JsonElement? AdditionalProperties);
 
-    private record ReplaceNameRule(
-        string Pattern,
-        string Replacement
-    );
-
     private record DateTimeModeOptions(
         int Column,
         string Pattern,
@@ -435,19 +430,6 @@ public class Csv : StructuredFileDataSource
         newResourceId = Resource.InvalidIdStartCharsExpression.Replace(newResourceId, "");
 
         return Resource.ValidIdExpression.IsMatch(newResourceId);
-    }
-
-    private static string FormatResourceId(string id, ReplaceNameRule[]? replaceNameRules)
-    {
-        if (replaceNameRules is not null)
-        {
-            foreach (var rule in replaceNameRules)
-            {
-                id = Regex.Replace(id, rule.Pattern, rule.Replacement);
-            }
-        }
-
-        return id;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
