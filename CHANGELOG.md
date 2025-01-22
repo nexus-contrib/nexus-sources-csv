@@ -1,3 +1,7 @@
+## v2.0.0-beta.36 - 2025-01-22
+
+- Follow Nexus changes
+
 ## v2.0.0-beta.35 - 2025-01-14
 
 - Intermediate version to support transition to Nexus.Sources.Transform
