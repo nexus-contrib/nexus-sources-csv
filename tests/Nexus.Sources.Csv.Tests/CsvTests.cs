@@ -15,7 +15,7 @@ public class CsvTests
     public async Task ProvidesCatalog()
     {
         // arrange
-        var dataSource = new Csv() as IDataSource<MySettings>;
+        var dataSource = (IDataSource<MySettings>)new Csv();
         var context = BuildContext();
 
         await dataSource.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
@@ -43,7 +43,7 @@ public class CsvTests
     public async Task CanRead_Equidistant()
     {
         // arrange
-        var dataSource = new Csv() as IDataSource<MySettings>;
+        var dataSource = (IDataSource<MySettings>)new Csv();
         var context = BuildContext();
 
         await dataSource.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
@@ -112,7 +112,7 @@ public class CsvTests
     public async Task CanRead_DateTime()
     {
         // arrange
-        var dataSource = new Csv() as IDataSource<MySettings>;
+        var dataSource = (IDataSource<MySettings>)new Csv();
         var context = BuildContext();
 
         await dataSource.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
