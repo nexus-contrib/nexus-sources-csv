@@ -171,7 +171,7 @@ public class CsvTests
         Assert.Equal(expected, actual.ToString());
     }
 
-    private DataSourceContext<MySettings> BuildContext()
+    private static DataSourceContext<MySettings> BuildContext()
     {
         var configFilePath = Path.Combine("Database", "config.json");
 
