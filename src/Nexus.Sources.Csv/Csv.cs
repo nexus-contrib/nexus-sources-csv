@@ -99,9 +99,9 @@ public class Csv : StructuredFileDataSource<CsvSettings, AdditionalFileSourceSet
 
     protected override Task<ResourceCatalog> EnrichCatalogAsync(ResourceCatalog catalog, CancellationToken cancellationToken)
     {
-        var fileSourceGroupsMap = Context.SourceConfiguration.FileSourceGroupsMap[catalog.Id];
+        var fileSourceGroups = Context.SourceConfiguration.FileSourceGroupsMap[catalog.Id];
 
-        foreach (var (fileSourceId, fileSourceGroup) in fileSourceGroupsMap)
+        foreach (var (fileSourceId, fileSourceGroup) in fileSourceGroups)
         {
             foreach (var fileSource in fileSourceGroup)
             {
