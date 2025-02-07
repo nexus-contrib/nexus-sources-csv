@@ -113,7 +113,6 @@ public abstract class Csv<TAdditionalSettings>
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var additionalSettings = fileSource.AdditionalSettings;
-                var newCatalogBuilder = new ResourceCatalogBuilder(id: catalog.Id);
                 var filePaths = default(string[]);
 
                 if (additionalSettings.CatalogSourceFiles is not null)
@@ -139,6 +138,7 @@ public abstract class Csv<TAdditionalSettings>
 
                     var (headerLine, unitLine) = ReadHeaderAndUnitLine(reader, additionalSettings);
                     var resourceProperties = GetResourceProperties(headerLine, unitLine, fileSource.AdditionalSettings);
+                    var newCatalogBuilder = new ResourceCatalogBuilder(id: catalog.Id);
 
                     foreach (var resourceProperty in resourceProperties)
                     {
