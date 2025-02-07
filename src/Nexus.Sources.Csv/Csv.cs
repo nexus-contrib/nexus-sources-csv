@@ -14,8 +14,10 @@ namespace Nexus.Sources;
 /// Additional extension-specific settings.
 /// </summary>
 /// <param name="TitleMap">The catalog ID to title map. Add an entry here to specify a custom catalog title.</param>
-public record CsvSettings(
-    Dictionary<string, string> TitleMap
+/// <param name="AdditionalSettings">Additional settings.</param>
+public record CsvSettings<TAdditionalSettings>(
+    Dictionary<string, string> TitleMap,
+    TAdditionalSettings AdditionalSettings
 );
 
 /// <summary>
@@ -46,7 +48,7 @@ public record DateTimeModeOptions(
 /// <param name="DecimalSeparator">The character used to separate decimal values. Default is '.'.</param>
 /// <param name="UnitRow">The row number of the unit. Default is -1.</param>
 /// <param name="DataRow">The row number of the data. Default is -1.</param>
-public record AdditionalFileSourceSettings(
+public record CsvAdditionalFileSourceSettings(
     TimeSpan SamplePeriod,
     string? InvalidValue,
     int CodePage,
@@ -68,7 +70,10 @@ public record AdditionalFileSourceSettings(
     "Provides access to databases with CSV files.",
     "https://github.com/Apollo3zehn/nexus-sources-csv",
     "https://github.com/Apollo3zehn/nexus-sources-csv")]
-public class Csv : StructuredFileDataSource<CsvSettings, AdditionalFileSourceSettings>
+public class Csv : Csv<object?>;
+
+public abstract class Csv<TAdditionalSettings> 
+    : StructuredFileDataSource<CsvSettings<TAdditionalSettings>, CsvAdditionalFileSourceSettings>
 {
     static Csv()
     {
@@ -99,9 +104,9 @@ public class Csv : StructuredFileDataSource<CsvSettings, AdditionalFileSourceSet
 
     protected override Task<ResourceCatalog> EnrichCatalogAsync(ResourceCatalog catalog, CancellationToken cancellationToken)
     {
-        var fileSourceGroups = Context.SourceConfiguration.FileSourceGroupsMap[catalog.Id];
+        var fileSourceGroupsMap = Context.SourceConfiguration.FileSourceGroupsMap[catalog.Id];
 
-        foreach (var (fileSourceId, fileSourceGroup) in fileSourceGroups)
+        foreach (var (fileSourceId, fileSourceGroup) in fileSourceGroupsMap)
         {
             foreach (var fileSource in fileSourceGroup)
             {
@@ -168,7 +173,7 @@ public class Csv : StructuredFileDataSource<CsvSettings, AdditionalFileSourceSet
     }
 
     protected override Task ReadAsync(
-        ReadInfo<AdditionalFileSourceSettings> info,
+        ReadInfo<CsvAdditionalFileSourceSettings> info,
         ReadRequest[] readRequests,
         CancellationToken cancellationToken)
     {
@@ -333,7 +338,7 @@ public class Csv : StructuredFileDataSource<CsvSettings, AdditionalFileSourceSet
         }, cancellationToken);
     }
 
-    protected virtual int[] GetIndices(ReadInfo<AdditionalFileSourceSettings> info, ReadRequest[] readRequests)
+    protected virtual int[] GetIndices(ReadInfo<CsvAdditionalFileSourceSettings> info, ReadRequest[] readRequests)
     {
         return readRequests
             .Select(readRequest => -1)
@@ -342,7 +347,7 @@ public class Csv : StructuredFileDataSource<CsvSettings, AdditionalFileSourceSet
 
     private static (string HeaderLine, string UnitLine) ReadHeaderAndUnitLine(
         StreamReader reader,
-        AdditionalFileSourceSettings additionalSettings)
+        CsvAdditionalFileSourceSettings additionalSettings)
     {
         if (additionalSettings.UnitRow < 0)
             additionalSettings = additionalSettings with { UnitRow = additionalSettings.HeaderRow };
@@ -371,7 +376,7 @@ public class Csv : StructuredFileDataSource<CsvSettings, AdditionalFileSourceSet
     private static List<(string, string, string?)> GetResourceProperties(
         string headerLine,
         string unitLine,
-        AdditionalFileSourceSettings additionalSettings)
+        CsvAdditionalFileSourceSettings additionalSettings)
     {
         // analyse header line
         var resourceProperties = new List<(string, string, string?)>();

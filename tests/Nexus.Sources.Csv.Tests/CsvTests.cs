@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Nexus.Sources.Tests;
 
-using MySettings = StructuredFileDataSourceSettings<CsvSettings, AdditionalFileSourceSettings>;
+using MySettings = StructuredFileDataSourceSettings<CsvSettings, CsvAdditionalFileSourceSettings>;
 
 public class CsvTests
 {
