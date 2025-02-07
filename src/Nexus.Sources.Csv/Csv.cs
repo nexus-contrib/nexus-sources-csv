@@ -3,7 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Nexus.DataModel;
@@ -11,105 +10,110 @@ using Nexus.Extensibility;
 
 namespace Nexus.Sources;
 
+/// <summary>
+/// Additional extension-specific settings.
+/// </summary>
+/// <param name="TitleMap">The catalog ID to title map. Add an entry here to specify a custom catalog title.</param>
+public record CsvSettings(
+    Dictionary<string, string> TitleMap
+);
+
+/// <summary>
+/// Settings for the date/time mode.
+/// </summary>
+/// <param name="Column">The column to extract the date/time from.</param>
+/// <param name="Pattern">The date/time pattern.</param>
+/// <param name="TimestampOffset">The timestamp offset to apply.</param>
+public record DateTimeModeOptions(
+    int Column,
+    string Pattern,
+    TimeSpan TimestampOffset
+);
+
+/// <summary>
+/// Additional file source settings.
+/// </summary>
+/// <param name="SamplePeriod">The period between samples.</param>
+/// <param name="InvalidValue">The value to use for invalid entries.</param>
+/// <param name="CodePage">The code page to use for decoding.</param>
+/// <param name="HeaderRow">The row number of the header.</param>
+/// <param name="ResourceIdPrefix">The prefix for resource IDs.</param>
+/// <param name="SkipColumnPattern">The pattern for columns to skip.</param>
+/// <param name="UnitPattern">The pattern for units.</param>
+/// <param name="CatalogSourceFiles">The source files to populate the catalog with resources.</param>
+/// <param name="DateTimeModeOptions">The options for date/time extraction.</param>
+/// <param name="Separator">The character used to separate values in the CSV file. Default is ','.</param>
+/// <param name="DecimalSeparator">The character used to separate decimal values. Default is '.'.</param>
+/// <param name="UnitRow">The row number of the unit. Default is -1.</param>
+/// <param name="DataRow">The row number of the data. Default is -1.</param>
+public record AdditionalFileSourceSettings(
+    TimeSpan SamplePeriod,
+    string? InvalidValue,
+    int CodePage,
+    int HeaderRow,
+    string? ResourceIdPrefix,
+    string? SkipColumnPattern,
+    string? UnitPattern,
+    string[]? CatalogSourceFiles,
+    DateTimeModeOptions? DateTimeModeOptions,
+    char Separator = ',',
+    char DecimalSeparator = '.',
+    int UnitRow = -1,
+    int DataRow = -1
+);
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
 [ExtensionDescription(
     "Provides access to databases with CSV files.",
     "https://github.com/Apollo3zehn/nexus-sources-csv",
     "https://github.com/Apollo3zehn/nexus-sources-csv")]
-public class Csv : StructuredFileDataSource
+public class Csv : StructuredFileDataSource<CsvSettings, AdditionalFileSourceSettings>
 {
-    private record CatalogDescription(
-        string Title,
-        Dictionary<string, IReadOnlyList<FileSource>> FileSourceGroups,
-        JsonElement? AdditionalProperties);
-
-    private record DateTimeModeOptions(
-        int Column,
-        string Pattern,
-        TimeSpan TimestampOffset
-    );
-
-    private record AdditionalProperties(
-        TimeSpan SamplePeriod,
-        string? InvalidValue,
-        int CodePage,
-        int HeaderRow,
-        string? ResourceIdPrefix,
-        string? SkipColumnPattern,
-        string? UnitPattern,
-        string[]? CatalogSourceFiles,
-        DateTimeModeOptions? DateTimeModeOptions,
-        char Separator = ',',
-        char DecimalSeparator = '.',
-        int UnitRow = -1,
-        int DataRow = -1);
-
-    #region Fields
-
-    private Dictionary<string, CatalogDescription> _config = default!;
-
-    #endregion
-
-    #region Constructors
-
     static Csv()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
     }
 
-    #endregion
-
-    #region Methods
-
-    protected override async Task InitializeAsync(CancellationToken cancellationToken)
-    {
-        var configFilePath = Path.Combine(Root, "config.json");
-
-        if (!File.Exists(configFilePath))
-            throw new Exception($"Configuration file {configFilePath} not found.");
-
-        var jsonString = await File.ReadAllTextAsync(configFilePath, cancellationToken);
-        _config = JsonSerializer.Deserialize<Dictionary<string, CatalogDescription>>(jsonString) ?? throw new Exception("config is null");
-    }
-
-    protected override Task<Func<string, Dictionary<string, IReadOnlyList<FileSource>>>> GetFileSourceProviderAsync(
-        CancellationToken cancellationToken)
-    {
-        return Task.FromResult<Func<string, Dictionary<string, IReadOnlyList<FileSource>>>>(
-            catalogId => _config[catalogId].FileSourceGroups);
-    }
-
-    protected override Task<CatalogRegistration[]> GetCatalogRegistrationsAsync(string path, CancellationToken cancellationToken)
+    protected override Task<CatalogRegistration[]> GetCatalogRegistrationsAsync(
+        string path,
+        CancellationToken cancellationToken
+    )
     {
         if (path == "/")
-            return Task.FromResult(_config.Select(entry => new CatalogRegistration(entry.Key, entry.Value.Title)).ToArray());
+        {
+            return Task.FromResult(Context.SourceConfiguration.FileSourceGroupsMap
+                .Select(entry =>
+                    {
+                        Context.SourceConfiguration.AdditionalSettings.TitleMap.TryGetValue(entry.Key, out var title);
+                        return new CatalogRegistration(entry.Key, title);
+                    }
+                ).ToArray());
+        }
 
         else
+        {
             return Task.FromResult(Array.Empty<CatalogRegistration>());
+        }
     }
 
     protected override Task<ResourceCatalog> EnrichCatalogAsync(ResourceCatalog catalog, CancellationToken cancellationToken)
     {
-        var catalogDescription = _config[catalog.Id];
+        var fileSourceGroupsMap = Context.SourceConfiguration.FileSourceGroupsMap[catalog.Id];
 
-        foreach (var (fileSourceId, fileSourceGroup) in catalogDescription.FileSourceGroups)
+        foreach (var (fileSourceId, fileSourceGroup) in fileSourceGroupsMap)
         {
             foreach (var fileSource in fileSourceGroup)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                var additionalSettings = fileSource.AdditionalSettings;
                 var newCatalogBuilder = new ResourceCatalogBuilder(id: catalog.Id);
-
-                if (fileSource.AdditionalProperties is null)
-                    continue;
-
-                var additionalProperties = JsonSerializer
-                    .Deserialize<AdditionalProperties>(fileSource.AdditionalProperties.Value)!;
-
                 var filePaths = default(string[]);
 
-                if (additionalProperties.CatalogSourceFiles is not null)
+                if (additionalSettings.CatalogSourceFiles is not null)
                 {
-                    filePaths = additionalProperties.CatalogSourceFiles
+                    filePaths = additionalSettings.CatalogSourceFiles
                         .Where(filePath => filePath is not null)
                         .Select(filePath => Path.Combine(Root, filePath!))
                         .ToArray();
@@ -122,14 +126,14 @@ public class Csv : StructuredFileDataSource
                     filePaths = [filePath];
                 }
 
-                var encoding = Encoding.GetEncoding(additionalProperties.CodePage);
+                var encoding = Encoding.GetEncoding(additionalSettings.CodePage);
 
                 foreach (var filePath in filePaths)
                 {
                     using var reader = new StreamReader(File.OpenRead(filePath), encoding);
 
-                    var (headerLine, unitLine) = ReadHeaderAndUnitLine(reader, additionalProperties);
-                    var resourceProperties = GetResourceProperties(headerLine, unitLine, additionalProperties);
+                    var (headerLine, unitLine) = ReadHeaderAndUnitLine(reader, additionalSettings);
+                    var resourceProperties = GetResourceProperties(headerLine, unitLine, fileSource.AdditionalSettings);
 
                     foreach (var resourceProperty in resourceProperties)
                     {
@@ -141,7 +145,7 @@ public class Csv : StructuredFileDataSource
                         // build representation
                         var representation = new Representation(
                             dataType: NexusDataType.FLOAT64,
-                            samplePeriod: additionalProperties.SamplePeriod);
+                            samplePeriod: additionalSettings.SamplePeriod);
 
                         // build resource
                         var resourceBuilder = new ResourceBuilder(id: resourceId)
@@ -164,42 +168,38 @@ public class Csv : StructuredFileDataSource
     }
 
     protected override Task ReadAsync(
-        ReadInfo info,
+        ReadInfo<AdditionalFileSourceSettings> info,
         ReadRequest[] readRequests,
         CancellationToken cancellationToken)
     {
         return Task.Run(() =>
         {
-            if (info.FileSource.AdditionalProperties is null)
-                return;
-
-            var additionalProperties = JsonSerializer
-                .Deserialize<AdditionalProperties>(info.FileSource.AdditionalProperties.Value)!;
+            var additionalSettings = info.FileSource.AdditionalSettings;
 
             // number format info
             var nfi = new NumberFormatInfo()
             {
-                NumberDecimalSeparator = additionalProperties.DecimalSeparator.ToString()
+                NumberDecimalSeparator = additionalSettings.DecimalSeparator.ToString()
             };
 
             // encoding / reader
-            var encoding = Encoding.GetEncoding(additionalProperties.CodePage);
+            var encoding = Encoding.GetEncoding(additionalSettings.CodePage);
             using var reader = new StreamReader(File.OpenRead(info.FilePath), encoding);
 
             // find indices
             int[] indices;
 
-            if (additionalProperties.HeaderRow == -1)
+            if (additionalSettings.HeaderRow == -1)
             {
                 indices = GetIndices(info, readRequests);
             }
 
             else
             {
-                var (headerLine, _) = ReadHeaderAndUnitLine(reader, additionalProperties);
+                var (headerLine, _) = ReadHeaderAndUnitLine(reader, additionalSettings);
 
                 var parts = headerLine
-                    .Split(additionalProperties.Separator)
+                    .Split(additionalSettings.Separator)
                     .ToList();
 
                 indices = readRequests
@@ -212,7 +212,7 @@ public class Csv : StructuredFileDataSource
                 .Select(readRequest => new CastMemoryManager<byte, double>(readRequest.Data).Memory)
                 .ToArray();
 
-            if (additionalProperties.DateTimeModeOptions is null)
+            if (additionalSettings.DateTimeModeOptions is null)
             {
                 // seek
                 for (int i = 0; i < info.FileOffset; i++)
@@ -238,13 +238,13 @@ public class Csv : StructuredFileDataSource
                         if (index == -1)
                             continue;
 
-                        if (!TryGetCell(line, index, additionalProperties.Separator, out var cell))
+                        if (!TryGetCell(line, index, additionalSettings.Separator, out var cell))
                         {
                             Logger.LogDebug("The actual buffer size does not match the expected size, which indicates an incomplete file");
                             return;
                         }
 
-                        if (MemoryExtensions.Equals(cell, additionalProperties.InvalidValue, StringComparison.Ordinal))
+                        if (MemoryExtensions.Equals(cell, additionalSettings.InvalidValue, StringComparison.Ordinal))
                         {
                             buffers[j].Span[i] = double.NaN;
                         }
@@ -274,18 +274,19 @@ public class Csv : StructuredFileDataSource
             else
             {
                 var samplePeriod = readRequests.First().CatalogItem.Representation.SamplePeriod;
-                var (dateTimeColumn, dateTimePattern, timestampOffset) = additionalProperties.DateTimeModeOptions;
+                var (dateTimeColumn, dateTimePattern, timestampOffset) = additionalSettings.DateTimeModeOptions;
 
                 string? line;
 
                 while ((line = reader.ReadLine()) != null)
                 {
                     // find buffer index using datetime
-                    if (!TryGetCell(line, dateTimeColumn - 1, additionalProperties.Separator, out var dateTimeCell))
+                    if (!TryGetCell(line, dateTimeColumn - 1, additionalSettings.Separator, out var dateTimeCell))
                     {
                         Logger.LogDebug("The actual buffer size does not match the expected size, which indicates an incomplete file");
                         return;
-                    };
+                    }
+                    ;
 
                     var dateTime = DateTime
                         .ParseExact(dateTimeCell, dateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal)
@@ -307,13 +308,13 @@ public class Csv : StructuredFileDataSource
                         if (index == -1)
                             continue;
 
-                        if (!TryGetCell(line, index, additionalProperties.Separator, out var cell))
+                        if (!TryGetCell(line, index, additionalSettings.Separator, out var cell))
                         {
                             Logger.LogDebug("The actual buffer size does not match the expected size, which indicates an incomplete file");
                             return;
                         }
 
-                        if (MemoryExtensions.Equals(cell, additionalProperties.InvalidValue, StringComparison.Ordinal))
+                        if (MemoryExtensions.Equals(cell, additionalSettings.InvalidValue, StringComparison.Ordinal))
                         {
                             buffers[j].Span[i] = double.NaN;
                         }
@@ -332,7 +333,7 @@ public class Csv : StructuredFileDataSource
         }, cancellationToken);
     }
 
-    protected virtual int[] GetIndices(ReadInfo info, ReadRequest[] readRequests)
+    protected virtual int[] GetIndices(ReadInfo<AdditionalFileSourceSettings> info, ReadRequest[] readRequests)
     {
         return readRequests
             .Select(readRequest => -1)
@@ -341,14 +342,14 @@ public class Csv : StructuredFileDataSource
 
     private static (string HeaderLine, string UnitLine) ReadHeaderAndUnitLine(
         StreamReader reader,
-        AdditionalProperties additionalProperties)
+        AdditionalFileSourceSettings additionalSettings)
     {
-        if (additionalProperties.UnitRow < 0)
-            additionalProperties = additionalProperties with { UnitRow = additionalProperties.HeaderRow };
+        if (additionalSettings.UnitRow < 0)
+            additionalSettings = additionalSettings with { UnitRow = additionalSettings.HeaderRow };
 
         var maxRow = Math.Max(
-            Math.Max(additionalProperties.HeaderRow, additionalProperties.UnitRow),
-            additionalProperties.DataRow);
+            Math.Max(additionalSettings.HeaderRow, additionalSettings.UnitRow),
+            additionalSettings.DataRow);
 
         string headerLine = default!;
         string unitLine = default!;
@@ -357,10 +358,10 @@ public class Csv : StructuredFileDataSource
         {
             var line = reader.ReadLine() ?? throw new Exception("The file is incomplete.");
 
-            if (i == (additionalProperties.HeaderRow - 1))
+            if (i == (additionalSettings.HeaderRow - 1))
                 headerLine = line;
 
-            if (i == (additionalProperties.UnitRow - 1))
+            if (i == (additionalSettings.UnitRow - 1))
                 unitLine = line;
         }
 
@@ -370,21 +371,21 @@ public class Csv : StructuredFileDataSource
     private static List<(string, string, string?)> GetResourceProperties(
         string headerLine,
         string unitLine,
-        AdditionalProperties additionalProperties)
+        AdditionalFileSourceSettings additionalSettings)
     {
         // analyse header line
         var resourceProperties = new List<(string, string, string?)>();
-        var headerColumns = headerLine.Split(additionalProperties.Separator);
-        var unitColumns = unitLine.Split(additionalProperties.Separator);
+        var headerColumns = headerLine.Split(additionalSettings.Separator);
+        var unitColumns = unitLine.Split(additionalSettings.Separator);
 
         for (int i = 0; i < headerColumns.Length; i++)
         {
             // skip columns
             var originalName = headerColumns[i];
 
-            if (additionalProperties.SkipColumnPattern is not null)
+            if (additionalSettings.SkipColumnPattern is not null)
             {
-                if (Regex.IsMatch(originalName, additionalProperties.SkipColumnPattern))
+                if (Regex.IsMatch(originalName, additionalSettings.SkipColumnPattern))
                 {
                     resourceProperties.Add(default);
                     continue;
@@ -394,21 +395,21 @@ public class Csv : StructuredFileDataSource
             // try get unit
             var unit = default(string?);
 
-            if (additionalProperties.UnitPattern is not null)
+            if (additionalSettings.UnitPattern is not null)
             {
-                var match = Regex.Match(unitColumns[i], additionalProperties.UnitPattern);
+                var match = Regex.Match(unitColumns[i], additionalSettings.UnitPattern);
 
                 if (match.Success)
                     unit = match.Groups[1].Value;
             }
 
-            else if (additionalProperties.UnitRow != -1)
+            else if (additionalSettings.UnitRow != -1)
             {
                 unit = unitColumns[i];
             }
 
             // try get resource id
-            var prefixedOriginalName = additionalProperties.ResourceIdPrefix + originalName;
+            var prefixedOriginalName = additionalSettings.ResourceIdPrefix + originalName;
 
             if (!TryEnforceNamingConvention(prefixedOriginalName, out var resourceId))
             {
@@ -518,6 +519,6 @@ public class Csv : StructuredFileDataSource
             }
         }
     }
-
-    #endregion
 }
+
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member

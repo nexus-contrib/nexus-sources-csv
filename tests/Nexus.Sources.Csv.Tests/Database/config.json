@@ -1,52 +1,55 @@
 {
-  "/A/B/C": {
-    "FileSourceGroups": {
+  "fileSourceGroupsMap": {
+    "/A/B/C": {
       "Equidistant": [{
-        "PathSegments": [
+        "pathSegments": [
           "'DATA'",
           "'Equidistant'",
           "yyyy-MM"
         ],
-        "FileTemplate": "yyyy-MM-dd_HH-mm-ss'.csv'",
-        "FilePeriod": "00:00:10",
-        "UtcOffset": "00:00:00",
-        "AdditionalProperties": {
-          "SamplePeriod": "00:00:01",
-          "Separator": ";",
-          "DecimalSeparator": ".",
-          "InvalidValue": "999",
-          "CodePage": 0,
-          "HeaderRow": 2,
-          "UnitRow": 3,
-          "SkipColumnPattern": "Date|Time|IgnoreMe",
-          "UnitPattern": "\\[(.*)\\]",
-          "DefaultGroup": "raw",
-          "GroupPattern": null
+        "fileTemplate": "yyyy-MM-dd_HH-mm-ss'.csv'",
+        "filePeriod": "00:00:10",
+        "utcOffset": "00:00:00",
+        "additionalSettings": {
+          "samplePeriod": "00:00:01",
+          "separator": ";",
+          "decimalSeparator": ".",
+          "invalidValue": "999",
+          "codePage": 0,
+          "headerRow": 2,
+          "unitRow": 3,
+          "skipColumnPattern": "Date|Time|IgnoreMe",
+          "unitPattern": "\\[(.*)\\]",
+          "defaultGroup": "raw",
+          "groupPattern": null
         }
       }],
       "DateTime": [{
-        "PathSegments": [
+        "pathSegments": [
           "'DATA'",
           "'DateTime'",
           "yyyy-MM"
         ],
-        "FileTemplate": "yyyy-MM-dd_HH-mm-ss'.csv'",
-        "FilePeriod": "00:00:10",
-        "UtcOffset": "01:00:00",
-        "AdditionalProperties": {
-          "SamplePeriod": "00:00:01",
-          "CodePage": 0,
-          "HeaderRow": 1,
-          "DataRow": 3,
-          "SkipColumnPattern": "DateTime|IgnoreMe",
-          "DefaultGroup": "raw",
-          "DateTimeModeOptions": {
-            "Column": 1,
-            "Pattern": "yyyy-MM-ddTHH:mm:ss.fffzz"
+        "fileTemplate": "yyyy-MM-dd_HH-mm-ss'.csv'",
+        "filePeriod": "00:00:10",
+        "utcOffset": "01:00:00",
+        "additionalSettings": {
+          "samplePeriod": "00:00:01",
+          "codePage": 0,
+          "headerRow": 1,
+          "dataRow": 3,
+          "skipColumnPattern": "DateTime|IgnoreMe",
+          "defaultGroup": "raw",
+          "dateTimeModeOptions": {
+            "column": 1,
+            "pattern": "yyyy-MM-ddTHH:mm:ss.fffzz"
           },
-          "Separator": ";"
+          "separator": ";"
         }
       }]
     }
+  },
+  "additionalSettings": {
+    "titleMap": {}
   }
 }

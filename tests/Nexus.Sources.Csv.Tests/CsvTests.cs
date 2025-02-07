@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexus.DataModel;
 using Nexus.Extensibility;
@@ -6,19 +7,16 @@ using Xunit;
 
 namespace Nexus.Sources.Tests;
 
+using MySettings = StructuredFileDataSourceSettings<CsvSettings, AdditionalFileSourceSettings>;
+
 public class CsvTests
 {
     [Fact]
     public async Task ProvidesCatalog()
     {
         // arrange
-        var dataSource = new Csv() as IDataSource;
-
-        var context = new DataSourceContext(
-            ResourceLocator: new Uri("Database", UriKind.Relative),
-            SystemConfiguration: default!,
-            SourceConfiguration: default!,
-            RequestConfiguration: default!);
+        var dataSource = new Csv() as IDataSource<MySettings>;
+        var context = BuildContext();
 
         await dataSource.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
 
@@ -45,13 +43,8 @@ public class CsvTests
     public async Task CanRead_Equidistant()
     {
         // arrange
-        var dataSource = new Csv() as IDataSource;
-
-        var context = new DataSourceContext(
-            ResourceLocator: new Uri("Database", UriKind.Relative),
-            SystemConfiguration: default!,
-            SourceConfiguration: default!,
-            RequestConfiguration: default!);
+        var dataSource = new Csv() as IDataSource<MySettings>;
+        var context = BuildContext();
 
         await dataSource.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
 
@@ -119,13 +112,8 @@ public class CsvTests
     public async Task CanRead_DateTime()
     {
         // arrange
-        var dataSource = new Csv() as IDataSource;
-
-        var context = new DataSourceContext(
-            ResourceLocator: new Uri("Database", UriKind.Relative),
-            SystemConfiguration: default!,
-            SourceConfiguration: default!,
-            RequestConfiguration: default!);
+        var dataSource = new Csv() as IDataSource<MySettings>;
+        var context = BuildContext();
 
         await dataSource.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
 
@@ -181,5 +169,24 @@ public class CsvTests
         // Assert
         Assert.True(success);
         Assert.Equal(expected, actual.ToString());
+    }
+
+    private DataSourceContext<MySettings> BuildContext()
+    {
+        var configFilePath = Path.Combine("Database", "config.json");
+
+        if (!File.Exists(configFilePath))
+            throw new Exception($"The configuration file does not exist on path {configFilePath}.");
+
+        var jsonString = File.ReadAllText(configFilePath);
+        var sourceConfiguration = JsonSerializer.Deserialize<MySettings>(jsonString, JsonSerializerOptions.Web)!;
+
+        var context = new DataSourceContext<MySettings>(
+            ResourceLocator: new Uri("Database", UriKind.Relative),
+            SourceConfiguration: sourceConfiguration,
+            RequestConfiguration: default!
+        );
+
+        return context;
     }
 }
