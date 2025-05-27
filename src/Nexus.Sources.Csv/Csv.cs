@@ -285,27 +285,79 @@ public abstract class Csv<TAdditionalSettings>
 
                 while ((line = reader.ReadLine()) != null)
                 {
-                    // find buffer index using datetime
+                    // Find buffer index using datetime
                     if (!TryGetCell(line, dateTimeColumn - 1, additionalSettings.Separator, out var dateTimeCell))
                     {
                         Logger.LogDebug("The actual buffer size does not match the expected size, which indicates an incomplete file");
                         return;
                     }
-                    ;
 
-                    var dateTime = DateTime
-                        .ParseExact(dateTimeCell, dateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal)
-                        .Add(-timestampOffset);
+                    // This is a copy of CustomDateTimeOffset.cs of the StruccturedFileDataSource project
+                    var result1 = DateTime.TryParseExact(
+                        dateTimeCell,
+                        dateTimePattern,
+                        default,
+                        /* Detect if input string includes time-zone information */
+                        DateTimeStyles.AdjustToUniversal |
+                        /* Do not use today as date when input contains no date information */
+                        DateTimeStyles.NoCurrentDateDefault,
+                        out var tmpDateTime
+                    );
 
-                    if (dateTime.Kind == DateTimeKind.Unspecified)
-                        dateTime = DateTime.SpecifyKind(dateTime.Add(-info.FileSource.UtcOffset), DateTimeKind.Utc);
+                    var result2 = DateTimeOffset.TryParseExact(
+                        dateTimeCell,
+                        dateTimePattern,
+                        default,
+                        /* Ensure that the Offset is 00:00 and so `tmpDateTimeOffset.UtcDateTime` 
+                        * becomes comparable to `tmpDateTime.Date` which is being adjusted to
+                        * universal.
+                        */
+                        DateTimeStyles.AssumeUniversal,
+                        out var tmpDateTimeOffset
+                    );
 
+                    if (!result1 || !result2)
+                        continue;
+
+                    DateTime dateTime;
+
+                    /* This happens when there is no date in the input string 
+                     * (see also 'NoCurrentDateDefault', which does not work
+                     * for DateTimeOffset) 
+                     */
+                    if (
+                        /* AdjustToUniversal = UTC */
+                        tmpDateTime.Date !=
+                        /* UtcDateTime = UTC */
+                        tmpDateTimeOffset.UtcDateTime.Date
+                    )
+                    {
+                        dateTime = DateTime.UtcNow.Date + tmpDateTimeOffset.TimeOfDay - tmpDateTimeOffset.Offset;
+
+                        /* No timezone information found in input */
+                        if (tmpDateTime.Kind == DateTimeKind.Unspecified)
+                            dateTime = DateTime.SpecifyKind(dateTime.Add(-info.FileSource.UtcOffset), DateTimeKind.Utc);
+                    }
+
+                    else
+                    {
+                        dateTime = DateTime
+                            .ParseExact(dateTimeCell, dateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.NoCurrentDateDefault);
+
+                        /* No timezone information found in input */
+                        if (dateTime.Kind == DateTimeKind.Unspecified)
+                            dateTime = DateTime.SpecifyKind(dateTime.Add(-info.FileSource.UtcOffset), DateTimeKind.Utc);
+                    }
+
+                    dateTime = dateTime.Add(-timestampOffset);
+
+                    // 
                     var i = (int)((dateTime - info.RegularFileBegin).Ticks / samplePeriod.Ticks - info.FileOffset);
 
                     if (i < 0 || i >= info.FileBlock)
                         continue;
 
-                    // for each read request
+                    // For each read request
                     for (int j = 0; j < readRequests.Length; j++)
                     {
                         var index = indices[j];
