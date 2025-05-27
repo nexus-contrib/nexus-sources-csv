@@ -1,3 +1,7 @@
+## v2.0.0-beta.39 - 2025-05-27
+
+- Improve handling of row timestamps without date component
+
 ## v2.0.0-beta.38 - 2025-02-07
 
 - Follow Nexus changes
