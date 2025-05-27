@@ -1,3 +1,7 @@
+## v2.0.0-beta.40 - 2025-05-27
+
+- Improve handling of row timestamps without date component
+
 ## v2.0.0-beta.39 - 2025-05-27
 
 - Improve handling of row timestamps without date component
