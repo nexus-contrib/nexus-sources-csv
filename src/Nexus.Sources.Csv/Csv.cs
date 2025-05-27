@@ -332,7 +332,7 @@ public abstract class Csv<TAdditionalSettings>
                         tmpDateTimeOffset.UtcDateTime.Date
                     )
                     {
-                        dateTime = DateTime.UtcNow.Date + tmpDateTimeOffset.TimeOfDay - tmpDateTimeOffset.Offset;
+                        dateTime = info.RegularFileBegin.Date + tmpDateTimeOffset.TimeOfDay - tmpDateTimeOffset.Offset;
 
                         /* No timezone information found in input */
                         if (tmpDateTime.Kind == DateTimeKind.Unspecified)
