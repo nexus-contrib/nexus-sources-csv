@@ -332,11 +332,10 @@ public abstract class Csv<TAdditionalSettings>
                         tmpDateTimeOffset.UtcDateTime.Date
                     )
                     {
-                        dateTime = info.RegularFileBegin.Date + tmpDateTimeOffset.TimeOfDay - tmpDateTimeOffset.Offset;
+                        var localRegularFileBegin = info.RegularFileBegin + info.FileSource.UtcOffset;
+                        var localDateTime = localRegularFileBegin.Date + tmpDateTimeOffset.TimeOfDay;
 
-                        /* No timezone information found in input */
-                        if (tmpDateTime.Kind == DateTimeKind.Unspecified)
-                            dateTime = DateTime.SpecifyKind(dateTime.Add(-info.FileSource.UtcOffset), DateTimeKind.Utc);
+                        dateTime = DateTime.SpecifyKind(localDateTime.Add(-info.FileSource.UtcOffset), DateTimeKind.Utc);
                     }
 
                     else
