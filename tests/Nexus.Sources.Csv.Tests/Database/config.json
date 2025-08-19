@@ -20,7 +20,6 @@
           "unitRow": 3,
           "skipColumnPattern": "Date|Time|IgnoreMe",
           "unitPattern": "\\[(.*)\\]",
-          "defaultGroup": "raw",
           "groupPattern": null
         }
       }],
@@ -39,7 +38,6 @@
           "headerRow": 1,
           "dataRow": 3,
           "skipColumnPattern": "DateTime|IgnoreMe",
-          "defaultGroup": "raw",
           "dateTimeModeOptions": {
             "column": 1,
             "pattern": "yyyy-MM-ddTHH:mm:ss.fffzz"
