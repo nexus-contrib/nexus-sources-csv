@@ -1,3 +1,15 @@
+## v2.0.0-beta.42 - 2025-08-22
+
+- Add support for sparse tables. Example:
+
+Time                 Channel 1     Channel 2      Channel 3      
+2022-01-01 00:00:00        100
+2022-01-01 00:00:00                       25            1.1
+2022-01-01 00:00:01        101
+2022-01-01 00:00:01                       22            1.9
+...
+
+
 ## v2.0.0-beta.41 - 2025-06-02
 
 - Fix handling of row timestamps without date component
