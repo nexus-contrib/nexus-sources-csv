@@ -24,11 +24,11 @@ public record CsvSettings<TAdditionalSettings>(
 /// Settings for the date/time mode.
 /// </summary>
 /// <param name="Column">The column to extract the date/time from.</param>
-/// <param name="Pattern">The date/time pattern.</param>
+/// <param name="Pattern">The date/time pattern. If no pattern is provided, it tries to parse the date/time using the format of CultureInfo.InvariantCulture.</param>
 /// <param name="TimestampOffset">The timestamp offset to apply.</param>
 public record DateTimeModeOptions(
     int Column,
-    string Pattern,
+    string? Pattern,
     TimeSpan TimestampOffset
 );
 
@@ -292,29 +292,54 @@ public abstract class Csv<TAdditionalSettings>
                         return;
                     }
 
-                    // This is a copy of CustomDateTimeOffset.cs of the StruccturedFileDataSource project
-                    var result1 = DateTime.TryParseExact(
-                        dateTimeCell,
-                        dateTimePattern,
-                        default,
-                        /* Detect if input string includes time-zone information */
-                        DateTimeStyles.AdjustToUniversal |
-                        /* Do not use today as date when input contains no date information */
-                        DateTimeStyles.NoCurrentDateDefault,
-                        out var tmpDateTime
-                    );
+                    // This is a copy of CustomDateTimeOffset.cs of the StructuredFileDataSource project
+                    var result1 = dateTimePattern is null
 
-                    var result2 = DateTimeOffset.TryParseExact(
-                        dateTimeCell,
-                        dateTimePattern,
-                        default,
-                        /* Ensure that the Offset is 00:00 and so `tmpDateTimeOffset.UtcDateTime` 
-                        * becomes comparable to `tmpDateTime.Date` which is being adjusted to
-                        * universal.
-                        */
-                        DateTimeStyles.AssumeUniversal,
-                        out var tmpDateTimeOffset
-                    );
+                        ? DateTime.TryParse(
+                            dateTimeCell,
+                            default,
+                            /* Detect if input string includes time-zone information */
+                            DateTimeStyles.AdjustToUniversal |
+                            /* Do not use today as date when input contains no date information */
+                            DateTimeStyles.NoCurrentDateDefault,
+                            out var tmpDateTime
+                        )
+
+                        : DateTime.TryParseExact(
+                            dateTimeCell,
+                            dateTimePattern,
+                            default,
+                            /* Detect if input string includes time-zone information */
+                            DateTimeStyles.AdjustToUniversal |
+                            /* Do not use today as date when input contains no date information */
+                            DateTimeStyles.NoCurrentDateDefault,
+                            out tmpDateTime
+                        );
+
+                    var result2 = dateTimePattern is null
+
+                        ? DateTimeOffset.TryParse(
+                            dateTimeCell,
+                            default,
+                            /* Ensure that the Offset is 00:00 and so `tmpDateTimeOffset.UtcDateTime` 
+                            * becomes comparable to `tmpDateTime.Date` which is being adjusted to
+                            * universal.
+                            */
+                            DateTimeStyles.AssumeUniversal,
+                            out var tmpDateTimeOffset
+                        )
+
+                        : DateTimeOffset.TryParseExact(
+                            dateTimeCell,
+                            dateTimePattern,
+                            default,
+                            /* Ensure that the Offset is 00:00 and so `tmpDateTimeOffset.UtcDateTime` 
+                            * becomes comparable to `tmpDateTime.Date` which is being adjusted to
+                            * universal.
+                            */
+                            DateTimeStyles.AssumeUniversal,
+                            out tmpDateTimeOffset
+                        );
 
                     if (!result1 || !result2)
                         continue;
@@ -340,8 +365,9 @@ public abstract class Csv<TAdditionalSettings>
 
                     else
                     {
-                        dateTime = DateTime
-                            .ParseExact(dateTimeCell, dateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.NoCurrentDateDefault);
+                        dateTime = dateTimePattern is null
+                            ? DateTime.Parse(dateTimeCell, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.NoCurrentDateDefault)
+                            : DateTime.ParseExact(dateTimeCell, dateTimePattern, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.NoCurrentDateDefault);
 
                         /* No timezone information found in input */
                         if (dateTime.Kind == DateTimeKind.Unspecified)

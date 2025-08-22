@@ -1,3 +1,7 @@
+## v2.0.0-beta.43 - 2025-08-22
+
+- Make date/time pattern optional
+
 ## v2.0.0-beta.42 - 2025-08-22
 
 - Add support for sparse tables. Example:
