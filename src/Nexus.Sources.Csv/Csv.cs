@@ -370,9 +370,13 @@ public abstract class Csv<TAdditionalSettings>
                             return;
                         }
 
-                        if (MemoryExtensions.Equals(cell, additionalSettings.InvalidValue, StringComparison.Ordinal))
+                        if (
+                            additionalSettings.InvalidValue is not null &&
+                            MemoryExtensions.Equals(cell, additionalSettings.InvalidValue, StringComparison.Ordinal)
+                        )
                         {
                             buffers[j].Span[i] = double.NaN;
+                            readRequests[i].Status.Span[i] = 1;
                         }
 
                         else
@@ -380,8 +384,32 @@ public abstract class Csv<TAdditionalSettings>
                             if (!double.TryParse(cell, NumberStyles.Float, nfi, out var value))
                                 value = double.NaN;
 
-                            buffers[j].Span[i] = value;
-                            readRequests[j].Status.Span[i] = 1;
+                            // The following check is for files that have one row per column 
+                            // group, i.e. a specific timestamp occurs more than once. We
+                            // want to avoid previously assigned values to be replaced when
+                            // encountering and empty cell.
+                            //
+                            // Example:
+                            //
+                            // Time                 Channel 1     Channel 2      Channel 3      
+                            // 2022-01-01 00:00:00        100
+                            // 2022-01-01 00:00:00                       25            1.1
+                            // 2022-01-01 00:00:01        101
+                            // 2022-01-01 00:00:01                       22            1.9
+                            // ...
+
+                            /* This buffer index has never been touched before */
+                            if (readRequests[j].Status.Span[i] == 0)
+                            {
+                                buffers[j].Span[i] = value;
+                                readRequests[j].Status.Span[i] = 1;
+                            }
+
+                            /* We already have a value, only overwrite if not NaN */
+                            else if (!double.IsNaN(value))
+                            {
+                                buffers[j].Span[i] = value;
+                            }
                         }
                     }
                 }
