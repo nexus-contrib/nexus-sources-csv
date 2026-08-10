@@ -44,6 +44,33 @@
           "separator": ";"
         }
       }]
+    },
+    "/Irregular": {
+      "DateTime": [{
+        "pathSegments": [
+          "'DATA'",
+          "'Irregular'",
+          "yyyy-MM"
+        ],
+        "fileTemplate": "yyyy-MM-dd_HH-mm-*'.csv'",
+        "fileDateTimePreselector": "(.{19})\\.csv",
+        "fileDateTimeSelector": "yyyy-MM-dd_HH-mm-ss",
+        "filePeriod": "00:00:10",
+        "utcOffset": "00:00:00",
+        "irregularTimeInterval": true,
+        "additionalSettings": {
+          "samplePeriod": "00:00:01",
+          "codePage": 0,
+          "headerRow": 1,
+          "dataRow": 2,
+          "skipColumnPattern": "DateTime",
+          "dateTimeModeOptions": {
+            "column": 1,
+            "pattern": "yyyy-MM-ddTHH:mm:ss.fff"
+          },
+          "separator": ";"
+        }
+      }]
     }
   },
   "additionalSettings": {

@@ -376,8 +376,7 @@ public abstract class Csv<TAdditionalSettings>
 
                     dateTime = dateTime.Add(-timestampOffset);
 
-                    // 
-                    var i = (int)((dateTime - info.RegularFileBegin).Ticks / samplePeriod.Ticks - info.FileOffset);
+                    var i = (int)((dateTime - info.BufferBegin).Ticks / samplePeriod.Ticks);
 
                     if (i < 0 || i >= info.FileBlock)
                         continue;
