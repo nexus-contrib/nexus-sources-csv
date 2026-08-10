@@ -19,8 +19,7 @@
           "headerRow": 2,
           "unitRow": 3,
           "skipColumnPattern": "Date|Time|IgnoreMe",
-          "unitPattern": "\\[(.*)\\]",
-          "groupPattern": null
+          "unitPattern": "\\[(.*)\\]"
         }
       }],
       "DateTime": [{
