@@ -1,3 +1,7 @@
+## v2.0.0-beta.44 - 2026-08-26
+
+- Make DataRow 1-based (breaking change)
+
 ## v2.0.0-beta.43 - 2025-08-22
 
 - Make date/time pattern optional
