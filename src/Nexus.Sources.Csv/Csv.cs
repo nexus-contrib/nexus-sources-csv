@@ -149,14 +149,16 @@ public abstract class Csv<TAdditionalSettings>
 
                         // build representation
                         var representation = new Representation(
-                            dataType: NexusDataType.FLOAT64,
+                            dataType: NexusDataType.Float64,
                             samplePeriod: additionalSettings.SamplePeriod);
 
                         // build resource
                         var resourceBuilder = new ResourceBuilder(id: resourceId)
-                            .WithFileSourceId(fileSourceId)
                             .WithOriginalName(originalName)
-                            .AddRepresentation(representation);
+                            .AddRepresentations(new Dictionary<Representation, string>()
+                            {
+                                [representation] = fileSourceId
+                            });
 
                         if (unit is not null)
                             resourceBuilder.WithUnit(unit);

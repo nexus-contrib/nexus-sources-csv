@@ -1,3 +1,7 @@
+## v2.0.0-beta.44 - 2026-09-10
+
+- Follow Nexus changes
+
 ## v2.0.0-beta.43 - 2025-08-22
 
 - Make date/time pattern optional
