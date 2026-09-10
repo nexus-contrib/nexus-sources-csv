@@ -155,6 +155,44 @@ public class CsvTests
         DoAssert();
     }
 
+    [Fact]
+    public async Task CanRead_DateTime_IrregularFileStart()
+    {
+        // arrange
+        var dataSource = (IDataSource<MySettings>)new Csv();
+        var context = BuildContext();
+
+        await dataSource.SetContextAsync(context, NullLogger.Instance, CancellationToken.None);
+
+        var catalog = await dataSource.EnrichCatalogAsync(new("/Irregular"), CancellationToken.None);
+        var resource = catalog.Resources![0];
+        var representation = resource!.Representations![0];
+        var catalogItem = new CatalogItem(catalog, resource, representation, default);
+
+        var begin = new DateTime(2020, 01, 01, 0, 0, 0, DateTimeKind.Utc);
+        var end = new DateTime(2020, 01, 01, 0, 0, 10, DateTimeKind.Utc);
+        var (data, status) = ExtensibilityUtilities.CreateBuffers(representation, begin, end);
+
+        var result = new ReadRequest(resource.Id, catalogItem, data, status);
+
+        // act
+        await dataSource.ReadAsync(begin, end, [result], default!, new Progress<double>(), CancellationToken.None);
+
+        // assert
+        var values = MemoryMarshal.Cast<byte, double>(result.Data.Span);
+
+        Assert.Equal(0, result.Status.Span[0]);
+        Assert.Equal(0, result.Status.Span[2]);
+        Assert.Equal(1, result.Status.Span[3]);
+        Assert.Equal(1, result.Status.Span[4]);
+        Assert.Equal(1, result.Status.Span[5]);
+        Assert.Equal(0, result.Status.Span[6]);
+
+        Assert.Equal(30, values[3]);
+        Assert.Equal(40, values[4]);
+        Assert.Equal(50, values[5]);
+    }
+
     [Theory]
     [InlineData("1.2,3.4,4.5", 2, "4.5")]
     [InlineData("\".,.\",1,abc", 2, "abc")]

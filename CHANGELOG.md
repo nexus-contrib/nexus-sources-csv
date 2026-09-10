@@ -1,6 +1,10 @@
-## v2.0.0-beta.44 - 2026-09-10
+## v2.0.0-beta.45 - 2026-09-10
 
 - Follow Nexus changes
+
+## v2.0.0-beta.44 - 2026-08-26
+
+- Make DataRow 1-based (breaking change)
 
 ## v2.0.0-beta.43 - 2025-08-22
 

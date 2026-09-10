@@ -46,8 +46,8 @@ public record DateTimeModeOptions(
 /// <param name="DateTimeModeOptions">The options for date/time extraction.</param>
 /// <param name="Separator">The character used to separate values in the CSV file. Default is ','.</param>
 /// <param name="DecimalSeparator">The character used to separate decimal values. Default is '.'.</param>
-/// <param name="UnitRow">The row number of the unit. Default is -1.</param>
-/// <param name="DataRow">The row number of the data. Default is -1.</param>
+/// <param name="UnitRow">The row number of the unit. Default is 0 (= unset).</param>
+/// <param name="DataRow">The row number of the data. Default is 0 (= unset).</param>
 public record CsvAdditionalFileSourceSettings(
     TimeSpan SamplePeriod,
     string? InvalidValue,
@@ -60,8 +60,8 @@ public record CsvAdditionalFileSourceSettings(
     DateTimeModeOptions? DateTimeModeOptions,
     char Separator = ',',
     char DecimalSeparator = '.',
-    int UnitRow = -1,
-    int DataRow = -1
+    int UnitRow = 0,
+    int DataRow = 0
 );
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
@@ -378,8 +378,7 @@ public abstract class Csv<TAdditionalSettings>
 
                     dateTime = dateTime.Add(-timestampOffset);
 
-                    // 
-                    var i = (int)((dateTime - info.RegularFileBegin).Ticks / samplePeriod.Ticks - info.FileOffset);
+                    var i = (int)((dateTime - info.BufferBegin).Ticks / samplePeriod.Ticks);
 
                     if (i < 0 || i >= info.FileBlock)
                         continue;
@@ -456,24 +455,32 @@ public abstract class Csv<TAdditionalSettings>
         StreamReader reader,
         CsvAdditionalFileSourceSettings additionalSettings)
     {
-        if (additionalSettings.UnitRow < 0)
-            additionalSettings = additionalSettings with { UnitRow = additionalSettings.HeaderRow };
+        var effectiveUnitRow = additionalSettings.UnitRow <= 0
+            ? additionalSettings.HeaderRow
+            : additionalSettings.UnitRow;
 
-        var maxRow = Math.Max(
-            Math.Max(additionalSettings.HeaderRow, additionalSettings.UnitRow),
-            additionalSettings.DataRow);
+        var headerLineIndex = additionalSettings.HeaderRow - 1;
+        var unitLineIndex = effectiveUnitRow - 1;
+        
+        var lastLineIndexBeforeData = additionalSettings.DataRow > 0
+            ? additionalSettings.DataRow - 2
+            : -1;
+
+        var lineCount = Math.Max(
+            Math.Max(headerLineIndex, unitLineIndex),
+            lastLineIndexBeforeData) + 1;
 
         string headerLine = default!;
         string unitLine = default!;
 
-        for (int i = 0; i < maxRow; i++)
+        for (int i = 0; i < lineCount; i++)
         {
             var line = reader.ReadLine() ?? throw new Exception("The file is incomplete.");
 
-            if (i == (additionalSettings.HeaderRow - 1))
+            if (i == headerLineIndex)
                 headerLine = line;
 
-            if (i == (additionalSettings.UnitRow - 1))
+            if (i == unitLineIndex)
                 unitLine = line;
         }
 
@@ -515,7 +522,7 @@ public abstract class Csv<TAdditionalSettings>
                     unit = match.Groups[1].Value;
             }
 
-            else if (additionalSettings.UnitRow != -1)
+            else if (additionalSettings.UnitRow > 0)
             {
                 unit = unitColumns[i];
             }
