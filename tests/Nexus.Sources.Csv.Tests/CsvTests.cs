@@ -63,8 +63,8 @@ public class CsvTests
         var (data1, status1) = ExtensibilityUtilities.CreateBuffers(representation1, begin, end);
         var (data2, status2) = ExtensibilityUtilities.CreateBuffers(representation2, begin, end);
 
-        var result1 = new ReadRequest(resource1.Id, catalogItem1, data1, status1);
-        var result2 = new ReadRequest(resource2.Id, catalogItem2, data2, status2);
+        var result1 = new ReadRequest(resource1.Id, catalogItem1, data1, status1, _ => Task.CompletedTask, CancellationToken.None);
+        var result2 = new ReadRequest(resource2.Id, catalogItem2, data2, status2, _ => Task.CompletedTask, CancellationToken.None);
         await dataSource.ReadAsync(begin, end, [result1, result2], default!, new Progress<double>(), CancellationToken.None);
 
         // assert
@@ -127,7 +127,7 @@ public class CsvTests
         var end = new DateTime(2020, 01, 01, 0, 0, 11, DateTimeKind.Utc);
         var (data, status) = ExtensibilityUtilities.CreateBuffers(representation, begin, end);
 
-        var result = new ReadRequest(resource.Id, catalogItem, data, status);
+        var result = new ReadRequest(resource.Id, catalogItem, data, status, _ => Task.CompletedTask, CancellationToken.None);
         await dataSource.ReadAsync(begin, end, [result], default!, new Progress<double>(), CancellationToken.None);
 
         // assert
@@ -173,7 +173,7 @@ public class CsvTests
         var end = new DateTime(2020, 01, 01, 0, 0, 10, DateTimeKind.Utc);
         var (data, status) = ExtensibilityUtilities.CreateBuffers(representation, begin, end);
 
-        var result = new ReadRequest(resource.Id, catalogItem, data, status);
+        var result = new ReadRequest(resource.Id, catalogItem, data, status, _ => Task.CompletedTask, CancellationToken.None);
 
         // act
         await dataSource.ReadAsync(begin, end, [result], default!, new Progress<double>(), CancellationToken.None);

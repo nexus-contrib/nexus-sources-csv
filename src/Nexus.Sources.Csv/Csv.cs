@@ -176,7 +176,7 @@ public abstract class Csv<TAdditionalSettings>
 
     protected override Task ReadAsync(
         ReadInfo<CsvAdditionalFileSourceSettings> info,
-        ReadRequest[] readRequests,
+        StructuredFileReadRequest[] readRequests,
         CancellationToken cancellationToken)
     {
         return Task.Run(() =>
@@ -444,7 +444,10 @@ public abstract class Csv<TAdditionalSettings>
         }, cancellationToken);
     }
 
-    protected virtual int[] GetIndices(ReadInfo<CsvAdditionalFileSourceSettings> info, ReadRequest[] readRequests)
+    protected virtual int[] GetIndices(
+        ReadInfo<CsvAdditionalFileSourceSettings> info,
+        StructuredFileReadRequest[] readRequests
+    )
     {
         return readRequests
             .Select(readRequest => -1)
