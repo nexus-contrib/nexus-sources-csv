@@ -36,32 +36,32 @@ public record DateTimeModeOptions(
 /// Additional file source settings.
 /// </summary>
 /// <param name="SamplePeriod">The period between samples.</param>
-/// <param name="InvalidValue">The value to use for invalid entries.</param>
 /// <param name="CodePage">The code page to use for decoding.</param>
 /// <param name="HeaderRow">The row number of the header.</param>
+/// <param name="Separator">The character used to separate values in the CSV file. Default is ','.</param>
+/// <param name="DecimalSeparator">The character used to separate decimal values. Default is '.'.</param>
+/// <param name="UnitRow">The row number of the unit. Default is 0 (= unset).</param>
+/// <param name="DataRow">The row number of the data. Default is 0 (= unset).</param>
+/// <param name="InvalidValue">The value to use for invalid entries.</param>
 /// <param name="ResourceIdPrefix">The prefix for resource IDs.</param>
 /// <param name="SkipColumnPattern">The pattern for columns to skip.</param>
 /// <param name="UnitPattern">The pattern for units.</param>
 /// <param name="CatalogSourceFiles">The source files to populate the catalog with resources.</param>
 /// <param name="DateTimeModeOptions">The options for date/time extraction.</param>
-/// <param name="Separator">The character used to separate values in the CSV file. Default is ','.</param>
-/// <param name="DecimalSeparator">The character used to separate decimal values. Default is '.'.</param>
-/// <param name="UnitRow">The row number of the unit. Default is 0 (= unset).</param>
-/// <param name="DataRow">The row number of the data. Default is 0 (= unset).</param>
 public record CsvAdditionalFileSourceSettings(
     TimeSpan SamplePeriod,
-    string? InvalidValue,
     int CodePage,
     int HeaderRow,
-    string? ResourceIdPrefix,
-    string? SkipColumnPattern,
-    string? UnitPattern,
-    string[]? CatalogSourceFiles,
-    DateTimeModeOptions? DateTimeModeOptions,
     char Separator = ',',
     char DecimalSeparator = '.',
     int UnitRow = 0,
-    int DataRow = 0
+    int DataRow = 0,
+    string? InvalidValue = default,
+    string? ResourceIdPrefix = default,
+    string? SkipColumnPattern = default,
+    string? UnitPattern = default,
+    string[]? CatalogSourceFiles = default,
+    DateTimeModeOptions? DateTimeModeOptions = default
 );
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
